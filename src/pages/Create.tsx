@@ -2,8 +2,7 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
-import type { CountryName, MatchMode } from '../types';
-import { COUNTRIES, flagFor } from '../data/countries';
+import type { MatchMode } from '../types';
 import { CREATE_MODES } from '../data/modes';
 import { DEFAULT_AVATAR_ID } from '../data/avatars';
 import { ROOM_CODE_MAX, ROOM_MESSAGE_MAX, validateRoomCode, validateRoomMessage } from '../lib/validation';
@@ -26,7 +25,6 @@ export function Create() {
 
   const [code, setCode] = useState('');
   const [mode, setMode] = useState<MatchMode>(CREATE_MODES[0]);
-  const [country, setCountry] = useState<CountryName>(COUNTRIES[0].name);
   const [message, setMessage] = useState('');
   const [errors, setErrors] = useState<{ code?: string; message?: string; form?: string }>({});
   const [busy, setBusy] = useState(false);
@@ -37,7 +35,7 @@ export function Create() {
   async function publish() {
     setBusy(true);
     const replacing = myRoom != null;
-    const res = await createRoom({ code, mode, country, message });
+    const res = await createRoom({ code, mode, message });
     setBusy(false);
     setConfirmReplace(false);
     if (!res.ok) {
@@ -131,19 +129,6 @@ export function Create() {
               ))}
             </div>
           </fieldset>
-
-          <div className="field-group">
-            <label className="label" htmlFor="room-country">
-              Country
-            </label>
-            <select id="room-country" className="field" value={country} onChange={(e) => setCountry(e.target.value as CountryName)}>
-              {COUNTRIES.map((c) => (
-                <option key={c.name} value={c.name}>
-                  {flagFor(c.name)} {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
 
           <div className="field-group">
             <label className="label" htmlFor="room-message">

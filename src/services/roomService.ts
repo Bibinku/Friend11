@@ -1,4 +1,4 @@
-import type { MatchRoom, MatchMode, CountryName, Result } from '../types';
+import type { MatchRoom, MatchMode, Result } from '../types';
 import { supabase } from '../lib/supabase';
 import { isCountry, isMode } from '../lib/validation';
 
@@ -6,7 +6,7 @@ interface RoomRow {
   id: string;
   username: string;
   avatar_id: number;
-  country: string;
+  country: string | null;
   mode: string;
   code: string;
   message: string | null;
@@ -35,13 +35,14 @@ export async function listRooms(guestKey: string): Promise<{ data: RoomSnapshot 
   const rooms: MatchRoom[] = [];
   for (const r of rows) {
     const createdAt = Date.parse(r.created_at);
-    // Skip malformed rows instead of crashing the list.
-    if (!isMode(r.mode) || !isCountry(r.country) || !Number.isFinite(createdAt)) continue;
+    // Skip malformed rows instead of crashing the list. Country is allowed
+    // to be null (guest rooms, or members who haven't set one).
+    if (!isMode(r.mode) || !Number.isFinite(createdAt)) continue;
     rooms.push({
       id: r.id,
       username: r.username,
       avatarId: r.avatar_id,
-      country: r.country,
+      country: isCountry(r.country) ? r.country : null,
       mode: r.mode,
       code: r.code,
       message: r.message ?? '',
@@ -55,19 +56,19 @@ export async function listRooms(guestKey: string): Promise<{ data: RoomSnapshot 
 export interface CreateRoomInput {
   code: string;
   mode: MatchMode;
-  country: CountryName;
   message: string;
   guestKey: string;
   guestUsername: string;
 }
 
 /** Creates a room, replacing any room this person already has. The server
- * stamps `created_at` and starts the 10-minute clock. */
+ * stamps `created_at`, starts the 10-minute clock, and fills in the
+ * country from the signed-in person's profile (or leaves it empty for a
+ * guest). */
 export async function createRoom(input: CreateRoomInput): Promise<Result> {
   const { error } = await supabase.rpc('create_room', {
     p_code: input.code.trim(),
     p_mode: input.mode,
-    p_country: input.country,
     p_message: input.message.trim(),
     p_guest_key: input.guestKey,
     p_guest_username: input.guestUsername,

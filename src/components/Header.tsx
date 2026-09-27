@@ -7,9 +7,9 @@ import { Avatar } from './Avatar';
 import { Logo } from './Logo';
 
 const NAV = [
-  { to: '/', label: 'HOME', end: true },
-  { to: '/create', label: 'CREATE', end: false },
-  { to: '/join', label: 'JOIN', end: false },
+  { to: '/', label: 'Home', end: true },
+  { to: '/create', label: 'Create Match', end: false },
+  { to: '/join', label: 'Join Match', end: false },
 ];
 
 export function Header({ onMenu }: { onMenu: () => void }) {
@@ -21,13 +21,15 @@ export function Header({ onMenu }: { onMenu: () => void }) {
   return (
     <header className="header">
       <div className="container header-inner">
-        <button type="button" className="icon-btn menu-btn" onClick={onMenu} aria-label="Open menu">
-          <Menu size={22} aria-hidden="true" />
-        </button>
+        <div className="header-left">
+          <button type="button" className="icon-btn menu-btn" onClick={onMenu} aria-label="Open menu">
+            <Menu size={22} aria-hidden="true" />
+          </button>
 
-        <Link to="/" className="brand" aria-label="FRIEND11 home">
-          <Logo />
-        </Link>
+          <Link to="/" className="brand" aria-label="FRIEND11 home">
+            <Logo />
+          </Link>
+        </div>
 
         <nav className="nav-desktop" aria-label="Primary">
           {NAV.map((n) => (

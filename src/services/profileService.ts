@@ -1,20 +1,23 @@
-import type { Profile, Result } from '../types';
+import type { CountryName, Profile, Result } from '../types';
 import { supabase } from '../lib/supabase';
+import { isCountry } from '../lib/validation';
 
 interface ProfileRow {
   id: string;
   username: string;
   avatar_id: number;
+  country: string | null;
   onboarded: boolean;
   created_at: string;
 }
 
-const COLUMNS = 'id, username, avatar_id, onboarded, created_at';
+const COLUMNS = 'id, username, avatar_id, country, onboarded, created_at';
 
 const toProfile = (r: ProfileRow): Profile => ({
   id: r.id,
   username: r.username,
   avatarId: r.avatar_id,
+  country: isCountry(r.country) ? r.country : null,
   onboarded: r.onboarded,
   createdAt: r.created_at,
 });
@@ -42,11 +45,12 @@ export async function createMissingProfile(userId: string): Promise<{ profile: P
 
 export async function saveProfile(
   userId: string,
-  changes: { username?: string; avatarId?: number; onboarded?: boolean },
+  changes: { username?: string; avatarId?: number; country?: CountryName; onboarded?: boolean },
 ): Promise<Result> {
   const patch: Record<string, unknown> = {};
   if (changes.username !== undefined) patch.username = changes.username.trim();
   if (changes.avatarId !== undefined) patch.avatar_id = changes.avatarId;
+  if (changes.country !== undefined) patch.country = changes.country;
   if (changes.onboarded !== undefined) patch.onboarded = changes.onboarded;
 
   const { data, error } = await supabase.from('profiles').update(patch).eq('id', userId).select('id');

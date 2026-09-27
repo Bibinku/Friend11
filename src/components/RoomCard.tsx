@@ -56,9 +56,11 @@ export function RoomCard({ room }: { room: MatchRoom }) {
           <span className="room-host-name">{room.username}</span>
           {room.isMine && <span className="badge">You</span>}
         </span>
-        <span className="room-country">
-          <span aria-hidden="true">{flagFor(room.country)}</span> {room.country}
-        </span>
+        {room.country && (
+          <span className="room-country">
+            <span aria-hidden="true">{flagFor(room.country)}</span> {room.country}
+          </span>
+        )}
       </div>
 
       {room.message && <p className="room-message">{room.message}</p>}

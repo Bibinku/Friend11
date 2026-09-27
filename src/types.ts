@@ -35,6 +35,8 @@ export interface Profile {
   id: string;
   username: string;
   avatarId: number;
+  /** Null until the person sets one (existing accounts from before this feature). */
+  country: CountryName | null;
   onboarded: boolean;
   createdAt: string;
 }
@@ -43,7 +45,8 @@ export interface MatchRoom {
   id: string;
   username: string;
   avatarId: number;
-  country: CountryName;
+  /** Null for guest-created rooms, and for members who haven't set a country yet. */
+  country: CountryName | null;
   mode: MatchMode;
   code: string;
   message: string;

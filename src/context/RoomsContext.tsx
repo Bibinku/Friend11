@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { CountryName, MatchMode, MatchRoom, Result } from '../types';
+import type { MatchMode, MatchRoom, Result } from '../types';
 import { isExpired } from '../lib/roomTime';
 import { loadGuest } from '../lib/storage';
 import type { GuestIdentity } from '../lib/storage';
@@ -19,7 +19,7 @@ interface RoomsValue {
   status: LoadStatus;
   guest: GuestIdentity;
   refresh: () => Promise<void>;
-  createRoom: (input: { code: string; mode: MatchMode; country: CountryName; message: string }) => Promise<Result>;
+  createRoom: (input: { code: string; mode: MatchMode; message: string }) => Promise<Result>;
   deleteMyRoom: () => Promise<Result>;
 }
 

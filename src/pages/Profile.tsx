@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ImageIcon, LogOut, PencilLine, Trash2 } from 'lucide-react';
+import { Globe, ImageIcon, LogOut, PencilLine, Trash2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useMyRoom, useRooms } from '../context/RoomsContext';
 import { useToast } from '../context/ToastContext';
@@ -8,12 +8,13 @@ import { useUI } from '../context/UIContext';
 import { flagFor } from '../data/countries';
 import { Avatar } from '../components/Avatar';
 import { AvatarPickerModal } from '../components/AvatarPickerModal';
+import { CountryModal } from '../components/CountryModal';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { Countdown } from '../components/Countdown';
 import { UsernameModal } from '../components/UsernameModal';
 
 export function Profile() {
-  const { restored, user, profile, profileStatus, isMember, signOut, updateAvatar, updateUsername, deleteAccount, retryProfile } = useAuth();
+  const { restored, user, profile, profileStatus, isMember, signOut, updateAvatar, updateUsername, updateCountry, deleteAccount, retryProfile } = useAuth();
   const { openLogin } = useUI();
   const { deleteMyRoom } = useRooms();
   const myRoom = useMyRoom();
@@ -21,6 +22,7 @@ export function Profile() {
 
   const [avatarOpen, setAvatarOpen] = useState(false);
   const [nameOpen, setNameOpen] = useState(false);
+  const [countryOpen, setCountryOpen] = useState(false);
   const [deleteRoomOpen, setDeleteRoomOpen] = useState(false);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
 
@@ -80,6 +82,7 @@ export function Profile() {
             <h1>{profile.username}</h1>
             <p>{user.email || '—'}</p>
             <p className="profile-since">Member since {createdLabel}</p>
+            <p className="profile-since">{profile.country ? `${flagFor(profile.country)} ${profile.country}` : 'Country not set'}</p>
           </div>
         </div>
 
@@ -92,7 +95,8 @@ export function Profile() {
             <>
               <p className="room-code room-code-sm">{myRoom.code}</p>
               <p className="hint">
-                {myRoom.mode} · {flagFor(myRoom.country)} {myRoom.country}
+                {myRoom.mode}
+                {myRoom.country ? ` · ${flagFor(myRoom.country)} ${myRoom.country}` : ''}
               </p>
               <button type="button" className="btn btn-secondary btn-block" onClick={() => setDeleteRoomOpen(true)}>
                 <Trash2 size={18} aria-hidden="true" /> Delete Room
@@ -115,6 +119,9 @@ export function Profile() {
           <button type="button" className="list-btn" onClick={() => setNameOpen(true)}>
             <PencilLine size={20} aria-hidden="true" /> Change Username
           </button>
+          <button type="button" className="list-btn" onClick={() => setCountryOpen(true)}>
+            <Globe size={20} aria-hidden="true" /> Change Country
+          </button>
           <button type="button" className="list-btn" onClick={() => void signOut()}>
             <LogOut size={20} aria-hidden="true" /> Logout
           </button>
@@ -131,6 +138,7 @@ export function Profile() {
 
       <AvatarPickerModal open={avatarOpen} currentId={profile.avatarId} onClose={() => setAvatarOpen(false)} onSave={async (id) => (await updateAvatar(id)).ok} />
       <UsernameModal open={nameOpen} current={profile.username} onClose={() => setNameOpen(false)} onSave={updateUsername} />
+      <CountryModal open={countryOpen} current={profile.country} onClose={() => setCountryOpen(false)} onSave={updateCountry} />
 
       <ConfirmModal
         open={deleteRoomOpen}

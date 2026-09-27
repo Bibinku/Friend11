@@ -1,10 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import type { Profile, Result } from '../types';
+import type { CountryName, Profile, Result } from '../types';
 import { getAuthRedirectUrl, initialAuthCallback, stripAuthErrorFromUrl, supabase } from '../lib/supabase';
 import { friendlyAuthError } from '../lib/authErrors';
-import { validateEmail, validateUsername } from '../lib/validation';
+import { isCountry, validateEmail, validateUsername } from '../lib/validation';
 import { logLogin } from '../lib/loginLog';
 import { markSignInStarted, takeSignInStarted } from '../lib/storage';
 import { AVATARS } from '../data/avatars';
@@ -39,9 +39,10 @@ interface AuthValue {
   signInWithGoogle: () => Promise<Result>;
   sendMagicLink: (email: string) => Promise<Result>;
   signOut: () => Promise<void>;
-  completeOnboarding: (username: string, avatarId: number) => Promise<Result>;
+  completeOnboarding: (username: string, avatarId: number, country: CountryName) => Promise<Result>;
   updateUsername: (username: string) => Promise<Result>;
   updateAvatar: (avatarId: number) => Promise<Result>;
+  updateCountry: (country: CountryName) => Promise<Result>;
   deleteAccount: () => Promise<Result>;
   retryProfile: () => void;
 }
@@ -104,8 +105,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Came back from Google / an email link but no session materialised. Say so
   // instead of silently staying logged out.
+  //
+  // This must only ever be checked ONCE, on the very first time `restored`
+  // becomes true after this page loaded. Without the guard below, this
+  // effect re-runs on every later change to `userId` too — including a
+  // deliberate Logout or Delete Account, which also sets userId to null.
+  // Since `initialAuthCallback` is captured once from the URL at page-load
+  // time and doesn't change, that later re-run would still see "this page
+  // load was a sign-in callback" and wrongly show this error after a normal
+  // sign-out.
+  const initialCallbackChecked = useRef(false);
   useEffect(() => {
-    if (!restored || userId) return;
+    if (!restored || initialCallbackChecked.current) return;
+    initialCallbackChecked.current = true;
+    if (userId) return; // signed in fine — nothing to report
     const c = initialAuthCallback;
     if (c.isCallback && !c.errorCode && !c.errorDescription) {
       setCallbackError((prev) => prev ?? 'We couldn’t finish signing you in. Please try again.');
@@ -182,14 +195,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [showToast]);
 
   const completeOnboarding = useCallback(
-    async (username: string, avatarId: number): Promise<Result> => {
+    async (username: string, avatarId: number, country: CountryName): Promise<Result> => {
       if (!userId || !profile) return { ok: false, error: 'Sign in first.' };
       const check = validateUsername(username);
       if (!check.ok) return check;
       if (!validAvatar(avatarId)) return { ok: false, error: 'Pick one of the avatars.' };
-      const res = await profiles.saveProfile(userId, { username, avatarId, onboarded: true });
+      if (!isCountry(country)) return { ok: false, error: 'Pick your country.' };
+      const res = await profiles.saveProfile(userId, { username, avatarId, country, onboarded: true });
       if (!res.ok) return res;
-      setProfile({ ...profile, username: username.trim(), avatarId, onboarded: true });
+      setProfile({ ...profile, username: username.trim(), avatarId, country, onboarded: true });
       showToast('Profile created — welcome to FRIEND11', 'success');
       return { ok: true };
     },
@@ -218,6 +232,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!res.ok) return res;
       setProfile({ ...profile, avatarId });
       showToast('Profile picture updated', 'success');
+      return { ok: true };
+    },
+    [userId, profile, showToast],
+  );
+
+  const updateCountry = useCallback(
+    async (country: CountryName): Promise<Result> => {
+      if (!userId || !profile) return { ok: false, error: 'Sign in first.' };
+      if (!isCountry(country)) return { ok: false, error: 'Pick a valid country.' };
+      const res = await profiles.saveProfile(userId, { country });
+      if (!res.ok) return res;
+      setProfile({ ...profile, country });
+      showToast('Country updated', 'success');
       return { ok: true };
     },
     [userId, profile, showToast],
@@ -264,13 +291,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       completeOnboarding,
       updateUsername,
       updateAvatar,
+      updateCountry,
       deleteAccount,
       retryProfile,
     }),
     [
       restored, user, profile, profileStatus, profileError, isSignedIn, needsOnboarding, isMember, callbackPending,
       callbackError, clearCallbackError, signInWithGoogle, sendMagicLink, signOut, completeOnboarding,
-      updateUsername, updateAvatar, deleteAccount, retryProfile,
+      updateUsername, updateAvatar, updateCountry, deleteAccount, retryProfile,
     ],
   );
 
