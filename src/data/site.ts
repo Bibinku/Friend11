@@ -1,5 +1,5 @@
 export const SITE_NAME = 'FRIEND11';
-export const CONTACT_EMAIL = 'hello@friend11.app';
+export const CONTACT_EMAIL = 'friend11official@gmail.com';
 export const DISCLAIMER =
   'FRIEND11 is an independent community website. It is not affiliated with, endorsed by, or sponsored by KONAMI or eFootball™. eFootball is a trademark of its respective owner.';
 
