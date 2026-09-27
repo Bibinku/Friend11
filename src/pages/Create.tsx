@@ -119,16 +119,18 @@ export function Create() {
             )}
           </div>
 
-          <fieldset className="field-group">
-            <legend className="label">Match mode</legend>
-            <div className="mode-options" role="radiogroup" aria-label="Match mode">
+          <div className="field-group">
+            <label className="label" htmlFor="room-mode">
+              Match mode
+            </label>
+            <select id="room-mode" className="field" value={mode} onChange={(e) => setMode(e.target.value as MatchMode)}>
               {CREATE_MODES.map((m) => (
-                <button key={m} type="button" role="radio" aria-checked={mode === m} className={`mode-option${mode === m ? ' is-selected' : ''}`} onClick={() => setMode(m)}>
+                <option key={m} value={m}>
                   {m}
-                </button>
+                </option>
               ))}
-            </div>
-          </fieldset>
+            </select>
+          </div>
 
           <div className="field-group">
             <label className="label" htmlFor="room-message">
