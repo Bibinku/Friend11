@@ -1,0 +1,208 @@
+/* FRIEND11 design tokens + base. Dark is the default; light overrides below. */
+:root,
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --text: #f5f7ff;
+  --text-2: #cbd2ee;
+  --text-3: #9ea9cf;
+  --surface: rgba(255, 255, 255, 0.07);
+  --surface-2: rgba(255, 255, 255, 0.11);
+  --surface-hover: rgba(255, 255, 255, 0.14);
+  --modal-bg: #1b2350;
+  --field-bg: rgba(9, 13, 36, 0.55);
+  --line: rgba(255, 255, 255, 0.13);
+  --line-strong: rgba(255, 255, 255, 0.26);
+  --accent: #ffc93c;
+  --accent-hover: #ffd766;
+  --accent-ink: #1b1836;
+  --accent-soft: rgba(255, 201, 60, 0.14);
+  --blue: #2f5bd1;
+  --link: #9db4ff;
+  --ok: #4ade80;
+  --danger: #ff7a7a;
+  --warn: #ffb84d;
+  --header-bg: rgba(16, 24, 47, 0.78);
+  --shadow: 0 20px 50px rgba(4, 7, 24, 0.5);
+  --bg-lines: rgba(255, 255, 255, 0.04);
+  --bg-image: radial-gradient(circle at 85% 92%, rgba(122, 74, 173, 0.5), transparent 55%),
+    linear-gradient(135deg, #10182f 0%, #1b2a55 45%, #3a2e68 78%, #4a2f63 100%);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --text: #141a30;
+  --text-2: #3b4666;
+  --text-3: #5a6584;
+  --surface: rgba(255, 255, 255, 0.82);
+  --surface-2: #ffffff;
+  --surface-hover: #ffffff;
+  --modal-bg: #ffffff;
+  --field-bg: #ffffff;
+  --line: rgba(27, 42, 85, 0.13);
+  --line-strong: rgba(27, 42, 85, 0.3);
+  --accent-soft: rgba(255, 201, 60, 0.22);
+  --link: #2b46b5;
+  --ok: #15803d;
+  --danger: #c62828;
+  --warn: #b45309;
+  --header-bg: rgba(238, 241, 252, 0.82);
+  --shadow: 0 18px 44px rgba(27, 42, 85, 0.16);
+  --bg-lines: rgba(27, 42, 85, 0.035);
+  --bg-image: radial-gradient(circle at 85% 92%, rgba(150, 110, 200, 0.28), transparent 55%),
+    linear-gradient(135deg, #f1f3fc 0%, #e6eafa 50%, #efe6f7 100%);
+}
+
+:root {
+  --font-display: 'Space Grotesk', 'Segoe UI', system-ui, sans-serif;
+  --font-body: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --radius: 14px;
+  --radius-lg: 20px;
+  --focus: #9db4ff;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+:root[data-theme='light'] {
+  --focus: #3b57d6;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
+  background: var(--bg-image);
+  background-color: #10182f;
+}
+/* FRIEND11 backdrop: diagonal pitch lines over the indigo gradient. A fixed
+   pseudo-element (not background-attachment) so it stays smooth on phones. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: repeating-linear-gradient(115deg, var(--bg-lines) 0 2px, transparent 2px 64px);
+}
+body.scroll-locked {
+  overflow: hidden;
+}
+
+h1, h2, h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  line-height: 1.12;
+  letter-spacing: -0.015em;
+}
+p {
+  margin: 0;
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+button {
+  cursor: pointer;
+}
+img {
+  display: block;
+  max-width: 100%;
+}
+ul,
+ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  background: var(--surface-2);
+  padding: 1px 6px;
+  border-radius: 6px;
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+.container {
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding-inline: max(18px, env(safe-area-inset-left)) max(18px, env(safe-area-inset-right));
+}
+.container-narrow {
+  max-width: 620px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.skip-link {
+  position: fixed;
+  left: 12px;
+  top: -80px;
+  z-index: 500;
+  background: var(--accent);
+  color: var(--accent-ink);
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+.skip-link:focus {
+  top: 12px;
+}
+
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .spin {
+    animation: none;
+  }
+}
