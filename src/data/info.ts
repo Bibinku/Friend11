@@ -69,7 +69,7 @@ export const INFO_PAGES: Record<string, InfoPageData> = {
         paragraphs: [
           'When you sign in: your email address, the username and avatar you choose, and the date your account was created. If you use Google sign-in we receive your Google account email but do not use your Google name as your username.',
           'When you publish a room: the room code, mode, country and optional message, plus your username and avatar (or a generated guest name). Rooms are public for 10 minutes and then deleted.',
-          'When you use Live Chat: the messages you send, with your username and avatar.',
+          'When you use Live Chat: the messages you send, with your username and avatar, the emoji reactions you leave, and which @mentions of you you have read.',
         ],
       },
       {

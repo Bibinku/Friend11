@@ -63,6 +63,14 @@ export interface ChatMessage {
   body: string;
   createdAt: number;
 }
+export const REACTION_EMOJIS = ['❤️', '😂', '😢', '😮', '👏', '👍'] as const;
+export type ReactionEmoji = (typeof REACTION_EMOJIS)[number];
 
+/** One person's reaction to one message. A person has at most one per message. */
+export interface ChatReaction {
+  messageId: string;
+  userId: string;
+  emoji: string;
+}
 export type ThemeMode = 'light' | 'dark';
 export type ToastKind = 'info' | 'success' | 'error';

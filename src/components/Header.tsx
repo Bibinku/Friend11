@@ -7,9 +7,9 @@ import { Avatar } from './Avatar';
 import { Logo } from './Logo';
 
 const NAV = [
-  { to: '/', label: 'Home', end: true },
-  { to: '/create', label: 'Create Match', end: false },
-  { to: '/join', label: 'Join Match', end: false },
+  { to: '/', label: 'HOME', end: true },
+  { to: '/create', label: 'CREATE', end: false },
+  { to: '/join', label: 'JOIN', end: false },
 ];
 
 export function Header({ onMenu }: { onMenu: () => void }) {

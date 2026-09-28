@@ -24,15 +24,16 @@ export function Create() {
   const myRoom = useMyRoom();
 
   const [code, setCode] = useState('');
-  const [mode, setMode] = useState<MatchMode>(CREATE_MODES[0]);
+  const [mode, setMode] = useState<MatchMode | ''>('');
   const [message, setMessage] = useState('');
-  const [errors, setErrors] = useState<{ code?: string; message?: string; form?: string }>({});
+  const [errors, setErrors] = useState<{ code?: string; mode?: string; message?: string; form?: string }>({});
   const [busy, setBusy] = useState(false);
   const [confirmReplace, setConfirmReplace] = useState(false);
 
   const posting = isMember && profile ? { name: profile.username, avatarId: profile.avatarId } : { name: guest.username, avatarId: DEFAULT_AVATAR_ID };
 
   async function publish() {
+    if (!mode) return; // guarded by submit() already; belt-and-braces, and narrows the type below
     setBusy(true);
     const replacing = myRoom != null;
     const res = await createRoom({ code, mode, message });
@@ -50,8 +51,9 @@ export function Create() {
     e.preventDefault();
     const c = validateRoomCode(code);
     const m = validateRoomMessage(message);
-    if (!c.ok || !m.ok) {
-      setErrors({ code: c.ok ? undefined : c.error, message: m.ok ? undefined : m.error });
+    const modeError = mode ? undefined : 'Choose a match mode.';
+    if (!c.ok || !m.ok || modeError) {
+      setErrors({ code: c.ok ? undefined : c.error, mode: modeError, message: m.ok ? undefined : m.error });
       return;
     }
     setErrors({});
@@ -123,13 +125,30 @@ export function Create() {
             <label className="label" htmlFor="room-mode">
               Match mode
             </label>
-            <select id="room-mode" className="field" value={mode} onChange={(e) => setMode(e.target.value as MatchMode)}>
+            <select
+              id="room-mode"
+              className="field"
+              value={mode}
+              onChange={(e) => {
+                setMode(e.target.value as MatchMode);
+                setErrors((p) => ({ ...p, mode: undefined }));
+              }}
+              aria-invalid={errors.mode ? true : undefined}
+            >
+              <option value="" disabled>
+                Select mode
+              </option>
               {CREATE_MODES.map((m) => (
                 <option key={m} value={m}>
                   {m}
                 </option>
               ))}
             </select>
+            {errors.mode && (
+              <p className="form-error" role="alert">
+                {errors.mode}
+              </p>
+            )}
           </div>
 
           <div className="field-group">

@@ -469,15 +469,17 @@
   flex-direction: column;
   gap: 14px;
   padding: 18px;
-  border: 1px solid var(--line);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
   border-radius: var(--radius-lg);
   background: var(--surface);
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
   min-width: 0;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 10%, transparent), 0 0 24px -10px color-mix(in srgb, var(--accent) 55%, transparent);
 }
 .room-card.is-mine {
-  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 65%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent), 0 0 30px -8px color-mix(in srgb, var(--accent) 75%, transparent);
 }
 .room-top {
   display: flex;
@@ -1026,4 +1028,162 @@
 .mention-suggestions button.is-active,
 .mention-suggestions button:hover {
   background: var(--surface-2);
+}
+/* ── Live Chat: message actions (long-press / right-click) ───────────── */
+.msg-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.msg.is-mine .msg-col {
+  align-items: flex-end;
+}
+/* Avatar + bubble stay bottom-aligned with each other; reactions sit underneath. */
+.msg-line {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+.msg-body {
+  min-width: 0;
+  max-width: 100%;
+}
+/* Line the emoji row and reaction pills up with the bubble, not the avatar. */
+.msg:not(.is-mine) .reaction-picker,
+.msg:not(.is-mine) .msg-reactions {
+  margin-left: 38px;
+}
+/* Touch screens: long-press should start message actions, not text selection. */
+@media (pointer: coarse) {
+  .msg {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+}
+
+/* The top bar turns into an action bar while a message is selected. */
+.chat-head-selection {
+  gap: 6px;
+  padding-left: 10px;
+  justify-content: flex-start;
+  border-radius: 24px 24px 0 0;
+  background: color-mix(in srgb, var(--blue) 24%, var(--modal-bg));
+}
+.chat-head-selection-label {
+  font-size: 15px;
+  font-weight: 600;
+}
+.chat-head-actions {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+}
+.icon-btn.danger {
+  color: var(--danger);
+}
+.icon-btn.danger:hover {
+  background: color-mix(in srgb, var(--danger) 16%, transparent);
+}
+@media (min-width: 640px) {
+  .chat-head-selection {
+    border-radius: 22px 22px 0 0;
+  }
+}
+
+/* Everything except the selected message steps back. */
+.chat-list.has-selection .msg:not(.is-selected) {
+  opacity: 0.38;
+  pointer-events: none;
+}
+.msg.is-selected .msg-body p {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* The emoji row that appears above the selected message. */
+.reaction-picker {
+  display: flex;
+  align-self: flex-start;
+  gap: 0;
+  margin-bottom: 8px;
+  padding: 4px 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--modal-bg);
+  box-shadow: var(--shadow);
+  animation: pop 0.16s ease-out;
+}
+.msg.is-mine .reaction-picker {
+  align-self: flex-end;
+}
+.reaction-picker button {
+  width: 32px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  font-size: 20px;
+  line-height: 1;
+  transition: transform 0.12s, background 0.12s;
+}
+.reaction-picker button:hover {
+  transform: scale(1.18);
+}
+.reaction-picker button.is-active {
+  background: var(--accent-soft);
+}
+@media (min-width: 400px) {
+  .reaction-picker button {
+    width: 38px;
+    height: 40px;
+    font-size: 23px;
+  }
+}
+
+/* Reactions people have left on a message. */
+.msg-reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+.reaction-pill {
+  min-height: 28px;
+  padding: 0 9px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+.reaction-pill.is-mine {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* Message info dialog */
+.msg-info-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.msg-info-name {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+.msg-info-time {
+  margin-top: 2px;
+  font-size: 13.5px;
+  color: var(--text-3);
+}
+.msg-info-body {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--surface-2);
+  overflow-wrap: anywhere;
 }
