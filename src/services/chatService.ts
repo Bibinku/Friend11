@@ -9,9 +9,12 @@ interface ChatRow {
   avatar_id: number;
   body: string;
   created_at: string;
+  reply_to_id: string | null;
+  reply_username: string | null;
+  reply_preview: string | null;
 }
 
-const COLUMNS = 'id, user_id, username, avatar_id, body, created_at';
+const COLUMNS = 'id, user_id, username, avatar_id, body, created_at, reply_to_id, reply_username, reply_preview';
 const HISTORY = 100;
 
 const toMessage = (r: ChatRow): ChatMessage => ({
@@ -21,6 +24,9 @@ const toMessage = (r: ChatRow): ChatMessage => ({
   avatarId: r.avatar_id,
   body: r.body,
   createdAt: Date.parse(r.created_at),
+  replyToId: r.reply_to_id,
+  replyUsername: r.reply_username,
+  replyPreview: r.reply_preview,
 });
 
 /** Newest 100 messages, oldest first. RLS: signed-in members only. */
@@ -34,12 +40,17 @@ export async function fetchRecentMessages(): Promise<{ data: ChatMessage[]; erro
   return { data: (data as ChatRow[]).map(toMessage).reverse(), error: null };
 }
 
-export async function sendChatMessage(body: string): Promise<Result> {
+/** Sends a message, optionally as a reply to an earlier one. The reply's
+ * sender name and a preview of its text are filled in server-side, from the
+ * real message — never from anything the browser sends. */
+export async function sendChatMessage(body: string, replyToId?: string | null): Promise<Result> {
   const check = validateChatMessage(body);
   if (!check.ok) return check;
   // user_id, username and avatar are stamped by the database from the
   // signed-in profile — the client can't spoof another person.
-  const { error } = await supabase.from('chat_messages').insert({ body: body.trim().replace(/\s+/g, ' ') });
+  const { error } = await supabase
+    .from('chat_messages')
+    .insert({ body: body.trim().replace(/\s+/g, ' '), reply_to_id: replyToId ?? null });
   if (error) return { ok: false, error: 'Message didn’t send. Try again.' };
   return { ok: true };
 }

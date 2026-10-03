@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent, KeyboardEvent } from 'react';
-import { Copy, Info, Loader2, Reply, Send, Trash2, X } from 'lucide-react';
+import { CornerUpLeft, Copy, Info, Loader2, Reply, Send, Trash2, X } from 'lucide-react';
 import type { ChatMessage, ChatReaction } from '../types';
 import { REACTION_EMOJIS } from '../types';
 import { CHAT_MESSAGE_MAX, validateChatMessage } from '../lib/validation';
@@ -82,6 +82,12 @@ export function ChatPanel({ onClose }: { onClose: () => void }) {
   const [infoMessage, setInfoMessage] = useState<ChatMessage | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ChatMessage | null>(null);
 
+  // The quoted-reply preview above the composer, WhatsApp-style.
+  const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
+  const [flashId, setFlashId] = useState<string | null>(null);
+  const bubbleRefs = useRef(new Map<string, HTMLDivElement>());
+  const flashTimer = useRef<number | undefined>(undefined);
+
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const stick = useRef(true);
@@ -161,7 +167,10 @@ export function ChatPanel({ onClose }: { onClose: () => void }) {
     if (el && stick.current) el.scrollTop = el.scrollHeight;
   }, [messages]);
 
-  useEffect(() => () => window.clearTimeout(pressTimer.current), []);
+  useEffect(() => () => {
+    window.clearTimeout(pressTimer.current);
+    window.clearTimeout(flashTimer.current);
+  }, []);
 
   // Who can be @mentioned: people seen in this chat so far (excludes yourself).
   const participants = useMemo(() => {
@@ -216,13 +225,28 @@ export function ChatPanel({ onClose }: { onClose: () => void }) {
     if (Date.now() - lastSent.current < SEND_GAP_MS) return setError('Slow down a little.');
     setSending(true);
     setError(null);
-    const res = await sendChatMessage(draft);
+    const res = await sendChatMessage(draft, replyTo?.id ?? null);
     setSending(false);
     if (!res.ok) return setError(res.error ?? 'Message didn’t send.');
     lastSent.current = Date.now();
     setDraft('');
+    setReplyTo(null);
     stick.current = true;
     if (!live) void load(); // realtime not connected: pull the new message in
+  }
+
+  /** Scrolls to and briefly highlights a message that's still loaded. If it
+   * has scrolled out of the loaded history, says so instead of doing nothing. */
+  function jumpTo(id: string) {
+    const el = bubbleRefs.current.get(id);
+    if (!el) {
+      showToast('That message is further up — scroll to find it.', 'info');
+      return;
+    }
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    window.clearTimeout(flashTimer.current);
+    setFlashId(id);
+    flashTimer.current = window.setTimeout(() => setFlashId(null), 1500);
   }
 
   // ── Long-press / right-click message actions ─────────────────────────
@@ -251,6 +275,7 @@ export function ChatPanel({ onClose }: { onClose: () => void }) {
   }
   function replySelected() {
     if (!selectedMessage) return;
+    setReplyTo(selectedMessage);
     const text = `@${selectedMessage.username} `;
     setDraft(text);
     setCaret(text.length);
@@ -363,7 +388,11 @@ export function ChatPanel({ onClose }: { onClose: () => void }) {
           return (
             <div
               key={m.id}
-              className={`msg${mine ? ' is-mine' : ''}${mentioned ? ' mentions-me' : ''}${isSelected ? ' is-selected' : ''}`}
+              ref={(el) => {
+                if (el) bubbleRefs.current.set(m.id, el);
+                else bubbleRefs.current.delete(m.id);
+              }}
+              className={`msg${mine ? ' is-mine' : ''}${mentioned ? ' mentions-me' : ''}${isSelected ? ' is-selected' : ''}${flashId === m.id ? ' is-flash' : ''}`}
               onContextMenu={(e) => openActions(e, m)}
               onTouchStart={() => startLongPress(m)}
               onTouchEnd={cancelLongPress}
@@ -392,6 +421,22 @@ export function ChatPanel({ onClose }: { onClose: () => void }) {
                     <span className="msg-meta">
                       {mine ? 'You' : m.username} · {time(m.createdAt)}
                     </span>
+                    {m.replyToId && (
+                      <button
+                        type="button"
+                        className="msg-quote"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          jumpTo(m.replyToId!);
+                        }}
+                      >
+                        <CornerUpLeft size={13} aria-hidden="true" />
+                        <span className="msg-quote-text">
+                          <span className="msg-quote-name">{m.replyUsername ?? 'Deleted message'}</span>
+                          <span>{m.replyPreview ?? ''}</span>
+                        </span>
+                      </button>
+                    )}
                     <MessageBody body={m.body} />
                   </div>
                 </div>
@@ -418,6 +463,19 @@ export function ChatPanel({ onClose }: { onClose: () => void }) {
           );
         })}
       </div>
+
+      {replyTo && (
+        <div className="reply-preview">
+          <span className="reply-preview-bar" aria-hidden="true" />
+          <div className="reply-preview-text">
+            <span className="reply-preview-name">Replying to {replyTo.userId === user?.id ? 'yourself' : replyTo.username}</span>
+            <span className="reply-preview-body">{replyTo.body}</span>
+          </div>
+          <button type="button" className="icon-btn" onClick={() => setReplyTo(null)} aria-label="Cancel reply">
+            <X size={16} aria-hidden="true" />
+          </button>
+        </div>
+      )}
 
       <form className="chat-form" onSubmit={submit}>
         <label className="sr-only" htmlFor="chat-input">

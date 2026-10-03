@@ -7,11 +7,10 @@ import { Avatar } from './Avatar';
 import { Logo } from './Logo';
 
 const NAV = [
-  { to: '/', label: 'HOME', end: true },
-  { to: '/create', label: 'CREATE', end: false },
-  { to: '/join', label: 'JOIN', end: false },
+  { to: '/', label: 'Home', end: true },
+  { to: '/create', label: 'Create', end: false },
+  { to: '/join', label: 'Join', end: false },
 ];
-
 export function Header({ onMenu }: { onMenu: () => void }) {
   const { theme, setTheme } = useTheme();
   const { restored, isSignedIn, profile } = useAuth();

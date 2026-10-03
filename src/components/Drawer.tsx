@@ -1,18 +1,23 @@
 import { useEffect } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { Home, LogIn, MessageCircle, Moon, PlusCircle, Search, Sun, UserRound, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useUI } from '../context/UIContext';
+import { useFilteredRooms, useRoomFilters } from '../context/RoomFiltersContext';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { INFO_LINKS } from '../data/site';
 import { Logo } from './Logo';
+import { RoomFilters } from './RoomFilters';
 
 export function Drawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const ref = useFocusTrap<HTMLElement>(open);
   const { theme, setTheme } = useTheme();
   const { isSignedIn } = useAuth();
   const { openLogin, requestChat } = useUI();
+  const navigate = useNavigate();
+  const f = useRoomFilters();
+  const { filtered } = useFilteredRooms();
 
   useEffect(() => {
     if (!open) return;
@@ -74,6 +79,36 @@ export function Drawer({ open, onClose }: { open: boolean; onClose: () => void }
             </button>
           )}
         </nav>
+
+        <div className="drawer-section">
+          <p className="drawer-heading">Filter rooms{f.activeCount > 0 ? ` · ${f.activeCount} on` : ''}</p>
+          <RoomFilters
+            stacked
+            search={f.search}
+            onSearch={f.setSearch}
+            mode={f.mode}
+            onMode={f.setMode}
+            country={f.country}
+            onCountry={f.setCountry}
+          />
+          <div className="drawer-filter-actions">
+            <button
+              type="button"
+              className="btn btn-primary btn-block"
+              onClick={() => {
+                onClose();
+                navigate('/join');
+              }}
+            >
+              {filtered.length === 0 ? 'Go to Join Match' : `Show ${filtered.length} ${filtered.length === 1 ? 'room' : 'rooms'}`}
+            </button>
+            {f.activeCount > 0 && (
+              <button type="button" className="btn btn-ghost btn-block" onClick={f.clear}>
+                Clear filters
+              </button>
+            )}
+          </div>
+        </div>
 
         <div className="drawer-section">
           <p className="drawer-heading">Appearance</p>

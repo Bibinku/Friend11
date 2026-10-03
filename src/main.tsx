@@ -7,6 +7,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './context/ToastContext';
 import { AuthProvider } from './context/AuthContext';
 import { RoomsProvider } from './context/RoomsContext';
+import { RoomFiltersProvider } from './context/RoomFiltersContext';
 import { UIProvider } from './context/UIContext';
 import { SetupNeeded } from './components/SetupNeeded';
 import App from './App';
@@ -26,9 +27,11 @@ createRoot(root).render(
           <ToastProvider>
             <AuthProvider>
               <RoomsProvider>
-                <UIProvider>
-                  <App />
-                </UIProvider>
+                <RoomFiltersProvider>
+                  <UIProvider>
+                    <App />
+                  </UIProvider>
+                </RoomFiltersProvider>
               </RoomsProvider>
             </AuthProvider>
           </ToastProvider>

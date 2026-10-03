@@ -74,6 +74,16 @@
 :root[data-theme='light'] .btn-success {
   color: #fff;
 }
+/* A room that's full for this viewer, or on the copy cooldown: greyed out, not clickable. */
+.btn-muted {
+  background: var(--surface-2);
+  border-color: var(--line);
+  color: var(--text-3);
+}
+.btn-muted:disabled,
+.btn-success:disabled {
+  opacity: 1; /* stay legible — these read as "done", not "unavailable" */
+}
 .btn-google {
   background: #fff;
   color: #1f1f1f;

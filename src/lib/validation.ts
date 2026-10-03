@@ -29,10 +29,14 @@ export function validateEmail(value: string): Result {
   return { ok: true };
 }
 
+const ROOM_CODE_PATTERN = /^[0-9]+$/;
+
 export function validateRoomCode(value: string): Result {
   const v = value.trim();
   if (!v) return { ok: false, error: 'Enter your eFootball room code.' };
   if (v.length > ROOM_CODE_MAX) return { ok: false, error: `Room codes are up to ${ROOM_CODE_MAX} characters.` };
+  // eFootball room codes are numbers only — no letters or symbols.
+  if (!ROOM_CODE_PATTERN.test(v)) return { ok: false, error: 'Please type a valid code.' };
   return { ok: true };
 }
 

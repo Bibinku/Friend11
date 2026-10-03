@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { Loader2, PlusCircle } from 'lucide-react';
 import type { MatchRoom } from '../types';
 import { useRooms } from '../context/RoomsContext';
+import { useRoomFilters } from '../context/RoomFiltersContext';
 import { RoomCard } from './RoomCard';
 
 interface RoomListProps {
@@ -12,6 +13,7 @@ interface RoomListProps {
 
 export function RoomList({ rooms, filtered = false }: RoomListProps) {
   const { status, refresh } = useRooms();
+  const { clear } = useRoomFilters();
 
   if (status === 'loading') {
     return (
@@ -34,7 +36,11 @@ export function RoomList({ rooms, filtered = false }: RoomListProps) {
     return (
       <div className="empty">
         <p>{filtered ? 'No rooms match your search.' : 'No rooms are live right now.'}</p>
-        {!filtered && (
+        {filtered ? (
+          <button type="button" className="btn btn-secondary" onClick={clear}>
+            Clear filters
+          </button>
+        ) : (
           <Link to="/create" className="btn btn-primary">
             <PlusCircle size={18} aria-hidden="true" /> Create the first room
           </Link>

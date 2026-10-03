@@ -1,18 +1,21 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight, Copy, PlusCircle, Search, Swords } from 'lucide-react';
-import { useActiveRooms, useRooms } from '../context/RoomsContext';
+import { ArrowRight, Copy, Filter, PlusCircle, Search, Swords } from 'lucide-react';
+import { useRooms } from '../context/RoomsContext';
+import { useFilteredRooms, useRoomFilters } from '../context/RoomFiltersContext';
+import { ActiveFilters } from '../components/ActiveFilters';
 import { RoomList } from '../components/RoomList';
 
 const STEPS = [
-  { icon: PlusCircle, title: 'Create a room', text: 'Enter your eFootball room code, pick a mode and country. No account needed.' },
+  { icon: PlusCircle, title: 'Create a room', text: 'Enter your eFootball room code and pick a mode. No account needed.' },
   { icon: Search, title: 'Find a room', text: 'Browse live rooms or filter by mode, country, player or code.' },
   { icon: Copy, title: 'Copy the code', text: 'Tap Copy Code on any room. Codes are public.' },
   { icon: Swords, title: 'Enter it in eFootball', text: 'Paste the code in the game yourself and play. Rooms last 10 minutes.' },
 ];
 
 export function Home() {
-  const rooms = useActiveRooms();
+  const { all: rooms, filtered } = useFilteredRooms();
   const { status } = useRooms();
+  const { activeCount, openFilter } = useRoomFilters();
 
   return (
     <>
@@ -45,11 +48,28 @@ export function Home() {
         <div className="container">
           <div className="section-head">
             <h2>Live now</h2>
-            <Link to="/join" className="text-link">
-              View all rooms <ArrowRight size={16} aria-hidden="true" />
-            </Link>
+            <div className="section-head-actions">
+              <Link to="/join" className="text-link">
+                View all rooms <ArrowRight size={16} aria-hidden="true" />
+              </Link>
+              <button
+                type="button"
+                className={`icon-btn filter-btn${activeCount > 0 ? ' is-active' : ''}`}
+                onClick={openFilter}
+                aria-label={activeCount > 0 ? `Filter rooms (${activeCount} on)` : 'Filter rooms'}
+                aria-haspopup="dialog"
+              >
+                <Filter size={20} aria-hidden="true" />
+                {activeCount > 0 && (
+                  <span className="filter-badge" aria-hidden="true">
+                    {activeCount}
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
-          <RoomList rooms={rooms.slice(0, 3)} />
+          <ActiveFilters />
+          <RoomList rooms={filtered.slice(0, 3)} filtered={rooms.length > 0} />
         </div>
       </section>
 

@@ -135,10 +135,13 @@
     margin-left: 0;
   }
   .nav-link {
-    padding: 10px 14px;
+    padding: 10px 16px;
     border-radius: 10px;
-    font-weight: 500;
-    font-size: 15px;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 14.5px;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
     color: var(--text-2);
     transition: background 0.16s, color 0.16s;
   }
@@ -276,9 +279,10 @@
 }
 .section-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 4px 12px;
   margin-bottom: 14px;
 }
 .section-head h2 {
@@ -533,6 +537,11 @@
   font-size: 14.5px;
   color: var(--text-2);
   overflow-wrap: anywhere;
+}
+.room-joined {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-3);
 }
 .room-card .btn {
   margin-top: auto;
@@ -1186,4 +1195,195 @@
   border-radius: 14px;
   background: var(--surface-2);
   overflow-wrap: anywhere;
+}
+/* ── Room filters: Home icon, menu section, pop-up ───────────────────── */
+.section-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto; /* stay on the right even if the row has to wrap */
+}
+.filter-btn {
+  position: relative;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+}
+.filter-btn.is-active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.filter-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+/* One field per row, with visible labels (menu + pop-up). */
+.filters.filters-stacked {
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-bottom: 0;
+}
+.filters-stacked .search-field {
+  grid-column: auto;
+}
+.filters-stacked .search-field svg {
+  top: 15px;
+}
+.filter-group {
+  display: block;
+  min-width: 0;
+}
+.filter-group .label {
+  display: block;
+  margin-bottom: 6px;
+}
+
+/* "Filtered by  Co-op Friendly  Japan  Clear" */
+.filters-active {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 14px;
+  font-size: 13.5px;
+  color: var(--text-2);
+}
+.filter-chip {
+  padding: 3px 10px;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.drawer-filter-actions {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+/* Very small phones (under 360px): trim the header so a logged-out visitor's
+   Sign in button still fits on screen. */
+@media (max-width: 359px) {
+  .header .logo-word {
+    font-size: 1.12rem;
+  }
+  .header .logo-tag {
+    padding: 3px 6px;
+    font-size: 0.95rem;
+  }
+  .header-actions {
+    gap: 2px;
+  }
+  .header-actions .btn-sm {
+    padding: 0 12px;
+  }
+  .header-actions .btn-sm svg {
+    display: none;
+  }
+}
+/* ── Live Chat: replies ────────────────────────────────────────────── */
+/* The quoted reference shown inside a message that's a reply. */
+.msg-quote {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  width: 100%;
+  max-width: 260px;
+  margin-bottom: 5px;
+  padding: 6px 9px;
+  border: 0;
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+  color: inherit;
+  text-align: left;
+}
+.msg.is-mine .msg-quote {
+  background: rgba(255, 255, 255, 0.16);
+}
+.msg-quote svg {
+  flex-shrink: 0;
+  margin-top: 3px;
+  opacity: 0.7;
+}
+.msg-quote-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+.msg-quote-text > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.85;
+}
+.msg-quote-name {
+  font-weight: 700;
+  color: var(--accent);
+}
+.msg.is-mine .msg-quote-name {
+  color: #fff;
+}
+
+/* Briefly pulses a message that was jumped to via a quote tap. */
+.msg.is-flash .msg-body p {
+  animation: quote-flash 1.5s ease-out;
+}
+@keyframes quote-flash {
+  0%,
+  35% {
+    background: var(--accent-soft);
+    box-shadow: 0 0 0 2px var(--accent);
+  }
+}
+
+/* The "Replying to…" bar above the composer, cancel with the X. */
+.reply-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px 8px 12px;
+  border-top: 1px solid var(--line);
+  background: var(--surface-2);
+}
+.reply-preview-bar {
+  align-self: stretch;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--accent);
+}
+.reply-preview-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+.reply-preview-name {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--accent);
+}
+.reply-preview-body {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13.5px;
+  color: var(--text-2);
 }

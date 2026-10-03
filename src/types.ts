@@ -3,11 +3,12 @@
 export const MATCH_MODES = [
   '1v1 Dream Team',
   '1v1 Authentic Team',
-  'Co-op Friendly',
+  'Co-op Friendly 2V2',
+  'Co-op Friendly 3V3',
   'Tournament (4)',
   'Tournament (8)',
 ] as const;
-/** The five creatable modes. "All modes" is a filter value only. */
+/** The six creatable modes. "All modes" is a filter value only. */
 export type MatchMode = (typeof MATCH_MODES)[number];
 export type MatchModeFilter = 'All modes' | MatchMode;
 
@@ -53,6 +54,16 @@ export interface MatchRoom {
   /** Server timestamp (ms). The single source of truth for expiry. */
   createdAt: number;
   isMine: boolean;
+  /** How many distinct people may use Copy Code before this room is "full". */
+  copyLimit: number;
+  /** How many of those slots are used so far. */
+  copiesUsed: number;
+  /** Have I personally used one of this room's copy slots? */
+  iCopied: boolean;
+  /** True once the room is full AND I'm not the owner or one of the copiers —
+   * drives the greyed-out "Already Copied" button and the room sinking down
+   * the list. Always false for the owner and for anyone who already copied. */
+  fullForMe: boolean;
 }
 
 export interface ChatMessage {
@@ -62,7 +73,14 @@ export interface ChatMessage {
   avatarId: number;
   body: string;
   createdAt: number;
+  /** Set when this message is a reply. replyUsername/replyPreview are a
+   * snapshot taken at send time, so the quote still reads correctly even
+   * after the original scrolls out of the loaded history. */
+  replyToId: string | null;
+  replyUsername: string | null;
+  replyPreview: string | null;
 }
+
 export const REACTION_EMOJIS = ['❤️', '😂', '😢', '😮', '👏', '👍'] as const;
 export type ReactionEmoji = (typeof REACTION_EMOJIS)[number];
 
@@ -72,5 +90,6 @@ export interface ChatReaction {
   userId: string;
   emoji: string;
 }
+
 export type ThemeMode = 'light' | 'dark';
 export type ToastKind = 'info' | 'success' | 'error';

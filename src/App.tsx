@@ -10,6 +10,7 @@ import { Footer } from './components/Footer';
 import { LoginModal } from './components/LoginModal';
 import { OnboardingModal } from './components/OnboardingModal';
 import { ChatWidget } from './components/ChatWidget';
+import { FilterModal } from './components/FilterModal';
 import { Home } from './pages/Home';
 import { Join } from './pages/Join';
 import { Create } from './pages/Create';
@@ -76,6 +77,7 @@ export default function App() {
       <Drawer open={menuOpen} onClose={() => setMenuOpen(false)} />
       <LoginModal />
       <OnboardingModal />
+      <FilterModal />
       <ChatWidget />
 
       {auth.callbackPending && (

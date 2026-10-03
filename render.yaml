@@ -1,0 +1,13 @@
+# Optional: lets Render configure this site from a file instead of the
+# dashboard. Not required if you've already added the rewrite rule in the
+# dashboard's Redirects/Rewrites tab — the two do the same thing.
+services:
+  - type: web
+    name: friend11
+    runtime: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

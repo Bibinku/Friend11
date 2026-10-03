@@ -32,7 +32,7 @@ export const INFO_PAGES: Record<string, InfoPageData> = {
       {
         heading: 'Hosting a match',
         paragraphs: [
-          'Open Create Match, enter the room code from eFootball, pick a mode and your country, and publish. Signing in is not required. You can add a short message for players who join.',
+          'Open Create Match, enter the room code from eFootball, pick a mode, and publish. Signing in is not required. You can add a short message for players who join.',
           'Your room is public for exactly 10 minutes, then disappears. Publishing a new room replaces your current one and starts a fresh 10 minutes.',
         ],
       },
@@ -68,7 +68,7 @@ export const INFO_PAGES: Record<string, InfoPageData> = {
         heading: 'What we collect',
         paragraphs: [
           'When you sign in: your email address, the username and avatar you choose, and the date your account was created. If you use Google sign-in we receive your Google account email but do not use your Google name as your username.',
-          'When you publish a room: the room code, mode, country and optional message, plus your username and avatar (or a generated guest name). Rooms are public for 10 minutes and then deleted.',
+          'When you publish a room: the room code, mode and optional message, plus your username and avatar (or a generated guest name), and your country if you are signed in and have set one. Rooms are public for 10 minutes and then deleted.',
           'When you use Live Chat: the messages you send, with your username and avatar, the emoji reactions you leave, and which @mentions of you you have read.',
         ],
       },
