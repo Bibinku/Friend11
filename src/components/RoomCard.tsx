@@ -5,7 +5,6 @@ import { iconForMode } from '../data/modes';
 import { flagFor } from '../data/countries';
 import { copyText } from '../lib/clipboard';
 import { isExpired, formatCountdown } from '../lib/roomTime';
-import { COPY_COOLDOWN_MS, lastCopyAt, markCopyNow } from '../lib/storage';
 import { useClock, useRooms } from '../context/RoomsContext';
 import { useToast } from '../context/ToastContext';
 import { copyRoomCode } from '../services/roomService';
@@ -17,58 +16,55 @@ export function RoomCard({ room }: { room: MatchRoom }) {
   const showToast = useToast();
   const { guest, refresh } = useRooms();
   const [busy, setBusy] = useState(false);
-  const [copiedNow, setCopiedNow] = useState(false); // instant local feedback, ahead of the next poll
   const ModeIcon = iconForMode(room.mode);
 
-  // "Full" is a plain fact about the room; "full FOR ME" (server-computed)
-  // additionally excludes the owner and anyone who already has a slot — the
-  // two groups who should see "Copied", never the greyed-out lockout.
-  const roomFull = room.copiesUsed >= room.copyLimit;
-  const mine = copiedNow || room.iCopied || (room.isMine && roomFull);
-  const cooldownLeft = Math.max(0, COPY_COOLDOWN_MS - (now - (lastCopyAt() ?? -Infinity)));
-  const onCooldown = !room.isMine && !mine && !room.fullForMe && cooldownLeft > 0;
+  // Everything comes from the server (1-second refresh), so owner, copiers
+  // and everyone else always agree.
+  const copiedByMe = room.iCopied;
+  const ownerSeesCopied = room.isMine && room.copiesUsed > 0;
+  // The cooldown belongs to ME, not to the room.
+  const cooldownLeft = room.cooldownUntil ? Math.max(0, room.cooldownUntil - now) : 0;
+  const onCooldown = !room.isMine && !copiedByMe && !room.fullForMe && cooldownLeft > 0;
 
   async function copy() {
     if (isExpired(room, now) || busy) return;
-    if (room.isMine) {
-      // Copying your own room is always free and unlimited — no server call.
-      const ok = await copyText(room.code);
-      if (!ok) return showToast('Couldn’t copy. Press and hold the code to copy it.', 'error');
-      showToast('Copied', 'success');
-      return;
-    }
-    if (mine || room.fullForMe) return; // button is disabled in these states anyway
-    if (onCooldown) {
-      showToast(`Please wait ${formatCountdown(cooldownLeft)} before copying another code.`, 'error');
-      return;
-    }
+    if (room.isMine || copiedByMe || room.fullForMe || onCooldown) return;
 
     setBusy(true);
     const res = await copyRoomCode(room.id, guest.key);
     setBusy(false);
     if (!res.ok) {
       showToast(res.error ?? 'Couldn’t copy this code.', 'error');
+      void refresh(); // someone else may have taken the last slot
       return;
     }
-    if (res.code) await copyText(res.code);
-    if (res.roomFull) {
-      showToast('This room just filled up — here’s the code anyway.', 'info');
-    } else {
-      showToast('Code copied. Enter it in eFootball.', 'success');
-      markCopyNow();
-    }
-    setCopiedNow(true);
-    void refresh(); // pull the fresh copies_used / list position promptly
+    const copied = res.code ? await copyText(res.code) : false;
+    showToast(
+      copied ? 'Code copied. Enter it in eFootball.' : 'Code saved to you, but your phone blocked auto-copy. Press and hold the code.',
+      copied ? 'success' : 'error',
+    );
+    void refresh();
   }
 
-  const showJoinedCount = room.copyLimit > 1; // not meaningful for the two 1v1 modes
+  const showJoinedCount = true;
 
   let label = 'Copy Code';
   let icon = <Copy size={18} aria-hidden="true" />;
-  let tone: 'primary' | 'success' | 'muted' = 'primary';
+  let tone: 'primary' | 'success' | 'muted' | 'plain' = 'primary';
   let disabled = false;
 
-  if (mine) {
+  if (room.isMine) {
+    disabled = true;
+    if (ownerSeesCopied) {
+      label = 'Copied';
+      icon = <Check size={18} aria-hidden="true" />;
+      tone = 'success';
+    } else {
+      label = 'Your Room';
+      icon = <Lock size={16} aria-hidden="true" />;
+      tone = 'plain';
+    }
+  } else if (copiedByMe) {
     label = 'Copied';
     icon = <Check size={18} aria-hidden="true" />;
     tone = 'success';
@@ -120,7 +116,9 @@ export function RoomCard({ room }: { room: MatchRoom }) {
 
       <button
         type="button"
-        className={`btn btn-block${tone === 'success' ? ' btn-success' : tone === 'muted' ? ' btn-muted' : ' btn-primary'}`}
+        className={`btn btn-block${
+          tone === 'success' ? ' btn-success' : tone === 'muted' ? ' btn-muted' : tone === 'plain' ? ' btn-secondary' : ' btn-primary'
+        }`}
         onClick={() => void copy()}
         disabled={disabled || busy}
       >

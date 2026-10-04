@@ -39,7 +39,17 @@ export async function fetchRecentMessages(): Promise<{ data: ChatMessage[]; erro
   if (error) return { data: [], error: error.message };
   return { data: (data as ChatRow[]).map(toMessage).reverse(), error: null };
 }
-
+/** Only messages newer than `sinceMs` — light enough to run every second. */
+export async function fetchMessagesSince(sinceMs: number): Promise<{ data: ChatMessage[]; error: string | null }> {
+  const { data, error } = await supabase
+    .from('chat_messages')
+    .select(COLUMNS)
+    .gte('created_at', new Date(sinceMs).toISOString())
+    .order('created_at', { ascending: true })
+    .limit(HISTORY);
+  if (error) return { data: [], error: error.message };
+  return { data: (data as ChatRow[]).map(toMessage), error: null };
+}
 /** Sends a message, optionally as a reply to an earlier one. The reply's
  * sender name and a preview of its text are filled in server-side, from the
  * real message — never from anything the browser sends. */

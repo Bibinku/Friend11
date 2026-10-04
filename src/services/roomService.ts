@@ -17,6 +17,7 @@ interface RoomRow {
   copies_used: number | null;
   i_copied: boolean | null;
   full_for_me: boolean | null;
+  cooldown_until: string | null;
 }
 
 export interface RoomSnapshot {
@@ -57,6 +58,7 @@ export async function listRooms(guestKey: string): Promise<{ data: RoomSnapshot 
       copiesUsed: r.copies_used ?? 0,
       iCopied: Boolean(r.i_copied),
       fullForMe: Boolean(r.full_for_me),
+      cooldownUntil: r.cooldown_until ? Date.parse(r.cooldown_until) || null : null,
     });
   }
   return { data: { rooms, clockOffsetMs: offset }, error: null };
@@ -95,27 +97,24 @@ export async function deleteMyRoom(guestKey: string): Promise<Result> {
 export interface CopyResult extends Result {
   /** The code to put on the clipboard — present whenever ok is true. */
   code?: string;
-  /** True when the room's copy slots filled up moments before this tap. */
-  roomFull?: boolean;
+  /** Why it failed, so the card can react. */
+  reason?: 'expired' | 'own' | 'already' | 'full' | 'cooldown' | 'other';
 }
 
-/**
- * Records a Copy Code tap and returns the code to copy. Copying your own
- * room is always free. Otherwise this uses one of the room's limited slots
- * (one per person, ever) and is subject to the site-wide 3-minute cooldown
- * between copies, enforced by the server.
- */
 export async function copyRoomCode(roomId: string, guestKey: string): Promise<CopyResult> {
   const { data, error } = await supabase.rpc('copy_room_code', { p_room_id: roomId, p_guest_key: guestKey });
   if (error) {
     const msg = error.message ?? '';
-    if (/expired/i.test(msg)) return { ok: false, error: 'This room has expired.' };
+    if (/expired/i.test(msg)) return { ok: false, reason: 'expired', error: 'This room has expired.' };
+    if (/your own room/i.test(msg)) return { ok: false, reason: 'own', error: 'You can’t copy your own room code.' };
+    if (/already copied/i.test(msg)) return { ok: false, reason: 'already', error: 'You already copied this room.' };
+    if (/is full/i.test(msg)) return { ok: false, reason: 'full', error: 'This room just filled up.' };
     if (/wait a few minutes/i.test(msg)) {
-      return { ok: false, error: 'You copied a code recently. Please wait a few minutes before copying another.' };
+      return { ok: false, reason: 'cooldown', error: 'You copied a code recently. Please wait before copying another.' };
     }
-    return { ok: false, error: 'Couldn’t copy this code. Try again.' };
+    return { ok: false, reason: 'other', error: 'Couldn’t copy this code. Try again.' };
   }
-  const row = (Array.isArray(data) ? data[0] : data) as { code: string; room_full: boolean } | undefined;
-  if (!row) return { ok: false, error: 'Couldn’t copy this code. Try again.' };
-  return { ok: true, code: row.code, roomFull: row.room_full };
+  const row = (Array.isArray(data) ? data[0] : data) as { code: string } | undefined;
+  if (!row?.code) return { ok: false, reason: 'other', error: 'Couldn’t copy this code. Try again.' };
+  return { ok: true, code: row.code };
 }

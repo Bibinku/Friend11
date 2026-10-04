@@ -8,7 +8,7 @@ import * as roomService from '../services/roomService';
 import { useAuth } from './AuthContext';
 import { useToast } from './ToastContext';
 
-const POLL_MS = 10_000;
+const POLL_MS = 1_000;
 const TICK_MS = 250;
 
 type LoadStatus = 'loading' | 'ready' | 'error';
@@ -46,21 +46,48 @@ export function RoomsProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<LoadStatus>('loading');
   const [offsetMs, setOffsetMs] = useState(0);
   const errorShown = useRef(false);
+  const inFlight = useRef(false);
+  const status0 = useRef(true); // first successful fetch sets the clock
+  const offsetRef = useRef(0);
+  const prevRooms = useRef<readonly MatchRoom[]>([]);
 
   const refresh = useCallback(async () => {
-    const { data, error } = await roomService.listRooms(guest.key);
-    if (error || !data) {
-      setStatus((s) => (s === 'ready' ? s : 'error'));
-      if (!errorShown.current) {
-        errorShown.current = true;
-        showToast('Couldn’t refresh rooms. Retrying…', 'error');
+    if (inFlight.current) return; // the 1-second poll never stacks up requests
+    inFlight.current = true;
+    try {
+      const { data, error } = await roomService.listRooms(guest.key);
+      if (error || !data) {
+        setStatus((s) => (s === 'ready' ? s : 'error'));
+        if (!errorShown.current) {
+          errorShown.current = true;
+          showToast('Couldn’t refresh rooms. Retrying…', 'error');
+        }
+        return;
       }
-      return;
+      errorShown.current = false;
+
+      // Keep the same object for a room that didn't change, so only changed cards re-render.
+      const before = new Map(prevRooms.current.map((r) => [r.id, r]));
+      const next = data.rooms.map((r) => {
+        const old = before.get(r.id);
+        return old && JSON.stringify(old) === JSON.stringify(r) ? old : r;
+      });
+      const same = next.length === prevRooms.current.length && next.every((r, i) => r === prevRooms.current[i]);
+      if (!same) {
+        prevRooms.current = next;
+        setRooms(next);
+      }
+
+      // Only move the clock when it really drifted, so the countdown doesn't wobble.
+      if (Math.abs(data.clockOffsetMs - offsetRef.current) > 1500 || status0.current) {
+        status0.current = false;
+        offsetRef.current = data.clockOffsetMs;
+        setOffsetMs(data.clockOffsetMs);
+      }
+      setStatus('ready');
+    } finally {
+      inFlight.current = false;
     }
-    errorShown.current = false;
-    setRooms(data.rooms);
-    setOffsetMs(data.clockOffsetMs);
-    setStatus('ready');
   }, [guest.key, showToast]);
 
   // Fetch on mount and whenever the account changes; poll while visible.
@@ -73,10 +100,14 @@ export function RoomsProvider({ children }: { children: ReactNode }) {
     const onVisible = () => {
       if (document.visibilityState === 'visible') void refresh();
     };
-    document.addEventListener('visibilitychange', onVisible);
+        document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('online', onVisible);
+    window.addEventListener('focus', onVisible);
     return () => {
       window.clearInterval(poll);
       document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('online', onVisible);
+      window.removeEventListener('focus', onVisible);
     };
   }, [refresh, userId]);
 

@@ -8,6 +8,7 @@ import { activeMentionQuery, applyMention, mentionsUser, splitMentions } from '.
 import { copyText } from '../lib/clipboard';
 import {
   deleteChatMessage,
+  fetchMessagesSince,
   fetchReactions,
   fetchRecentMessages,
   sendChatMessage,
@@ -141,14 +142,33 @@ export function ChatPanel({ onClose }: { onClose: () => void }) {
 
   // Realtime not connected (or not enabled on the table): fall back to polling,
   // for messages AND for other people's reactions.
+    // Every second, whether or not Realtime is connected: pull anything newer.
+  // Every 10 s do a full reload (so deleted messages vanish); every 3 s refresh reactions.
   useEffect(() => {
-    if (live) return;
-    const id = window.setInterval(() => {
-      void load();
-      void loadReactions(messagesRef.current.map((m) => m.id));
-    }, 8000);
+    let tick = 0;
+    let busy = false;
+    const id = window.setInterval(async () => {
+      if (busy || document.visibilityState !== 'visible') return;
+      busy = true;
+      tick += 1;
+      try {
+        if (tick % 10 === 0 || messagesRef.current.length === 0) {
+          await load();
+        } else {
+          const newest = messagesRef.current[messagesRef.current.length - 1].createdAt;
+          const { data, error: err } = await fetchMessagesSince(newest);
+          if (!err && data.length) {
+            data.forEach((m) => arrivals.current.set(m.id, arrivals.current.get(m.id) ?? performance.now()));
+            setMessages((prev) => merge(prev, data));
+          }
+        }
+        if (tick % 3 === 0) await loadReactions(messagesRef.current.map((m) => m.id));
+      } finally {
+        busy = false;
+      }
+    }, 1000);
     return () => window.clearInterval(id);
-  }, [live]);
+  }, []);
 
   // Reactions: load for whatever is currently on screen, and keep them live.
   useEffect(() => {

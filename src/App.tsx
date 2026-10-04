@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Route, Routes, useLocation } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from './context/AuthContext';
 import { useUI } from './context/UIContext';
@@ -65,6 +65,8 @@ export default function App() {
       <main id="main">
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/index.html" element={<Navigate to="/" replace />} />
+          <Route path="/home" element={<Navigate to="/" replace />} />
           <Route path="/join" element={<Join />} />
           <Route path="/create" element={<Create />} />
           <Route path="/profile" element={<Profile />} />
