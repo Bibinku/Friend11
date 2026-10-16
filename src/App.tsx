@@ -1,15 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from './context/AuthContext';
 import { useUI } from './context/UIContext';
 import { takeAfterLogin } from './lib/storage';
 import { Header } from './components/Header';
-import { Drawer } from './components/Drawer';
+import { BottomNav } from './components/BottomNav';
 import { Footer } from './components/Footer';
 import { LoginModal } from './components/LoginModal';
 import { OnboardingModal } from './components/OnboardingModal';
 import { ChatWidget } from './components/ChatWidget';
+import { HomeEntrance } from './components/HomeEntrance';
 import { FilterModal } from './components/FilterModal';
 import { Home } from './pages/Home';
 import { Join } from './pages/Join';
@@ -22,7 +23,6 @@ export default function App() {
   const auth = useAuth();
   const { openLogin, closeLogin, openChat } = useUI();
   const { pathname } = useLocation();
-  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -45,10 +45,11 @@ export default function App() {
 
   return (
     <div className="app">
+      <HomeEntrance />
       <a href="#main" className="skip-link">
         Skip to content
       </a>
-      <Header onMenu={() => setMenuOpen(true)} />
+      <Header />
 
       {auth.isSignedIn && auth.profileStatus === 'error' && (
         <div className="banner-bar" role="alert">
@@ -76,7 +77,7 @@ export default function App() {
       </main>
 
       <Footer />
-      <Drawer open={menuOpen} onClose={() => setMenuOpen(false)} />
+      <BottomNav />
       <LoginModal />
       <OnboardingModal />
       <FilterModal />

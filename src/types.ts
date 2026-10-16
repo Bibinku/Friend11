@@ -64,8 +64,6 @@ export interface MatchRoom {
    * drives the greyed-out "Already Copied" button and the room sinking down
    * the list. Always false for the owner and for anyone who already copied. */
   fullForMe: boolean;
-  /** Server time (ms) until which THIS person can't copy another code, or null. Per user, not per room. */
-  cooldownUntil: number | null;
 }
 
 export interface ChatMessage {
@@ -75,6 +73,8 @@ export interface ChatMessage {
   avatarId: number;
   body: string;
   createdAt: number;
+  /** When the sender last edited the text (null = never edited). */
+  editedAt: number | null;
   /** Set when this message is a reply. replyUsername/replyPreview are a
    * snapshot taken at send time, so the quote still reads correctly even
    * after the original scrolls out of the loaded history. */

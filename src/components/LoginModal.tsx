@@ -6,7 +6,7 @@ import { useUI } from '../context/UIContext';
 import { validateEmail } from '../lib/validation';
 import { clearAfterLogin } from '../lib/storage';
 import { Modal } from './Modal';
-import { GoogleIcon } from './GoogleIcon';
+import { GoogleSignInButton } from './GoogleSignInButton';
 
 const RESEND_SECONDS = 60;
 
@@ -38,7 +38,7 @@ export function LoginModal() {
 
 /** Mounted only while the modal is open, so its state resets on every open. */
 function LoginForm() {
-  const { signInWithGoogle, sendMagicLink, callbackError, clearCallbackError } = useAuth();
+  const { signInWithGoogleIdToken, sendMagicLink, callbackError, clearCallbackError } = useAuth();
   const [email, setEmail] = useState('');
   const [phase, setPhase] = useState<'form' | 'sending' | 'sent'>('form');
   const [googleBusy, setGoogleBusy] = useState(false);
@@ -51,16 +51,16 @@ function LoginForm() {
     return () => window.clearTimeout(id);
   }, [resendIn]);
 
-  async function google() {
+  async function onGoogleCredential(credential: string, nonce: string) {
     setError(null);
     clearCallbackError();
     setGoogleBusy(true);
-    const res = await signInWithGoogle();
+    const res = await signInWithGoogleIdToken(credential, nonce);
     if (!res.ok) {
       setGoogleBusy(false);
-      setError(res.error ?? 'Google sign-in could not start.');
+      setError(res.error ?? 'Google sign-in could not finish.');
     }
-    // On success the browser is already navigating to Google; keep the spinner.
+    // On success the session is set and the sign-in dialog closes by itself.
   }
 
   async function sendLink(e?: FormEvent) {
@@ -118,10 +118,7 @@ function LoginForm() {
         </p>
       )}
 
-      <button type="button" className="btn btn-google btn-block" onClick={() => void google()} disabled={googleBusy || sending}>
-        {googleBusy ? <Loader2 size={18} className="spin" aria-hidden="true" /> : <GoogleIcon />}
-        {googleBusy ? 'Opening Google…' : 'Continue with Google'}
-      </button>
+      <GoogleSignInButton busy={googleBusy} onCredential={(credential, nonce) => void onGoogleCredential(credential, nonce)} />
 
       <div className="divider">
         <span>or</span>

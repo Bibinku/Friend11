@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
+import { Check, Loader2 } from 'lucide-react';
 import type { MatchMode } from '../types';
-import { CREATE_MODES } from '../data/modes';
+import { CREATE_MODES, iconForMode } from '../data/modes';
 import { DEFAULT_AVATAR_ID } from '../data/avatars';
 import { ROOM_CODE_MAX, ROOM_MESSAGE_MAX, validateRoomCode, validateRoomMessage } from '../lib/validation';
 import { useAuth } from '../context/AuthContext';
@@ -62,31 +62,30 @@ export function Create() {
   }
 
   return (
-    <section className="section page">
+    <section className="section page create-page">
       <div className="container container-narrow">
-        <div className="page-head">
+        <header className="page-head rise" style={{ ['--d' as string]: '0ms' }}>
+          <p className="eyebrow">New room</p>
           <h1>Create a match</h1>
           <p>Your room is public for exactly 10 minutes.</p>
-        </div>
+        </header>
 
-        <form className="card form-card" onSubmit={submit} noValidate>
-          <div className="posting-as">
+        <form className="create-form" onSubmit={submit} noValidate>
+          <div className="posting-as rise" style={{ ['--d' as string]: '40ms' }}>
             <Avatar id={posting.avatarId} size={36} />
             <p>
-              Posting as <strong>{posting.name}</strong>
-              {!isMember && (
-                <>
-                  {' · '}
-                  <button type="button" className="text-btn" onClick={() => openLogin()}>
-                    Sign in to use your profile
-                  </button>
-                </>
-              )}
+              <span className="posting-label">Posting as</span>
+              <strong>{posting.name}</strong>
             </p>
+            {!isMember && (
+              <button type="button" className="posting-action" onClick={() => openLogin()}>
+                Sign in
+              </button>
+            )}
           </div>
 
           {myRoom && (
-            <div className="notice" role="status">
+            <div className="notice rise" role="status" style={{ ['--d' as string]: '70ms' }}>
               <p>
                 You already have a live room (<strong>{myRoom.code}</strong>). Publishing a new one replaces it.
               </p>
@@ -94,7 +93,7 @@ export function Create() {
             </div>
           )}
 
-          <div className="field-group">
+          <div className="form-block rise" style={{ ['--d' as string]: '100ms' }}>
             <label className="label" htmlFor="room-code">
               Room code
             </label>
@@ -105,7 +104,9 @@ export function Create() {
               maxLength={ROOM_CODE_MAX}
               autoComplete="off"
               autoCapitalize="none"
+              autoCorrect="off"
               spellCheck={false}
+              enterKeyHint="next"
               placeholder="Your eFootball room code"
               onChange={(e) => {
                 setCode(e.target.value);
@@ -121,58 +122,66 @@ export function Create() {
             )}
           </div>
 
-          <div className="field-group">
-            <label className="label" htmlFor="room-mode">
-              Match mode
-            </label>
-            <select
-              id="room-mode"
-              className="field"
-              value={mode}
-              onChange={(e) => {
-                setMode(e.target.value as MatchMode);
-                setErrors((p) => ({ ...p, mode: undefined }));
-              }}
-              aria-invalid={errors.mode ? true : undefined}
-            >
-              <option value="" disabled>
-                Select mode
-              </option>
-              {CREATE_MODES.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
+          <fieldset className="form-block rise" style={{ ['--d' as string]: '130ms' }} aria-describedby={errors.mode ? 'room-mode-err' : undefined}>
+            <legend className="label">Match mode</legend>
+            <div className="mode-grid" role="radiogroup" aria-label="Match mode">
+              {CREATE_MODES.map((m) => {
+                const Icon = iconForMode(m);
+                const selected = mode === m;
+                return (
+                  <button
+                    key={m}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    className={`mode-tile${selected ? ' is-selected' : ''}`}
+                    onClick={() => {
+                      setMode(m);
+                      setErrors((p) => ({ ...p, mode: undefined }));
+                    }}
+                  >
+                    <span className="mode-tile-icon" aria-hidden="true">
+                      <Icon size={18} strokeWidth={1.9} />
+                    </span>
+                    <span className="mode-tile-name">{m}</span>
+                    <span className="mode-tile-check" aria-hidden="true">
+                      <Check size={12} strokeWidth={3} />
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
             {errors.mode && (
-              <p className="form-error" role="alert">
+              <p id="room-mode-err" className="form-error" role="alert">
                 {errors.mode}
               </p>
             )}
-          </div>
+          </fieldset>
 
-          <div className="field-group">
+          <div className="form-block rise" style={{ ['--d' as string]: '160ms' }}>
             <label className="label" htmlFor="room-message">
-              Give a message <span className="optional">(optional)</span>
+              Message <span className="optional">(optional)</span>
             </label>
-            <textarea
-              id="room-message"
-              className="field"
-              rows={2}
-              maxLength={ROOM_MESSAGE_MAX}
-              placeholder="Friendlies only, no sweats…"
-              value={message}
-              onChange={(e) => {
-                setMessage(e.target.value);
-                setErrors((p) => ({ ...p, message: undefined }));
-              }}
-              aria-describedby="room-message-hint"
-            />
-            <p id="room-message-hint" className="hint hint-row">
-              <span>Shown on your room card. No sign-in needed.</span>
-              <span>
+            <div className="textarea-wrap">
+              <textarea
+                id="room-message"
+                className="field"
+                rows={3}
+                maxLength={ROOM_MESSAGE_MAX}
+                placeholder="Friendlies only, no sweats…"
+                value={message}
+                onChange={(e) => {
+                  setMessage(e.target.value);
+                  setErrors((p) => ({ ...p, message: undefined }));
+                }}
+                aria-describedby="room-message-hint"
+              />
+              <span className="char-count" aria-hidden="true">
                 {message.length}/{ROOM_MESSAGE_MAX}
               </span>
+            </div>
+            <p id="room-message-hint" className="hint">
+              Shown on your room card. No sign-in needed.
             </p>
             {errors.message && (
               <p className="form-error" role="alert">
@@ -187,13 +196,15 @@ export function Create() {
             </p>
           )}
 
-          <button type="submit" className="btn btn-primary btn-lg btn-block" disabled={busy}>
-            {busy && <Loader2 size={18} className="spin" aria-hidden="true" />}
-            {myRoom ? 'Replace room' : 'Publish room'}
-          </button>
-          <p className="fine">
-            Room codes are public. Players copy the code and enter it in eFootball themselves. See <Link to="/info/how-it-works">How it works</Link>.
-          </p>
+          <div className="rise" style={{ ['--d' as string]: '190ms' }}>
+            <button type="submit" className="btn btn-primary btn-lg btn-block btn-cta" disabled={busy}>
+              {busy && <Loader2 size={18} className="spin" aria-hidden="true" />}
+              {myRoom ? 'Replace room' : 'Publish room'}
+            </button>
+            <p className="fine">
+              Room codes are public. Players copy the code and enter it in eFootball themselves. See <Link to="/info/how-it-works">How it works</Link>.
+            </p>
+          </div>
         </form>
       </div>
 

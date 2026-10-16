@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent, KeyboardEvent } from 'react';
-import { CornerUpLeft, Copy, Info, Loader2, Reply, Send, Trash2, X } from 'lucide-react';
+import { Check, CornerUpLeft, Copy, Info, Loader2, Pencil, Reply, Send, Trash2, X } from 'lucide-react';
 import type { ChatMessage, ChatReaction } from '../types';
 import { REACTION_EMOJIS } from '../types';
 import { CHAT_MESSAGE_MAX, validateChatMessage } from '../lib/validation';
@@ -8,6 +8,7 @@ import { activeMentionQuery, applyMention, mentionsUser, splitMentions } from '.
 import { copyText } from '../lib/clipboard';
 import {
   deleteChatMessage,
+  editChatMessage,
   fetchMessagesSince,
   fetchReactions,
   fetchRecentMessages,
@@ -21,11 +22,16 @@ import { useToast } from '../context/ToastContext';
 import { Avatar } from './Avatar';
 import { ConfirmModal } from './ConfirmModal';
 import { MessageInfoModal } from './MessageInfoModal';
+import { SwipeToReply } from './SwipeToReply';
 
 const MAX_KEPT = 200;
 const SEND_GAP_MS = 1200;
 const SUGGESTION_LIMIT = 5;
 const LONG_PRESS_MS = 500;
+/** WhatsApp lets you edit a message for 15 minutes after sending it. The database enforces the same limit. */
+const EDIT_WINDOW_MS = 15 * 60 * 1000;
+/** How long the golden highlight stays on a message you jumped to (it fades during the last part). */
+const FLASH_MS = 4800;
 
 const time = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
@@ -86,6 +92,11 @@ export function ChatPanel({ onClose }: { onClose: () => void }) {
   // The quoted-reply preview above the composer, WhatsApp-style.
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
   const [flashId, setFlashId] = useState<string | null>(null);
+
+  // Editing one of my own messages (composer switches into edit mode).
+  const [editing, setEditing] = useState<ChatMessage | null>(null);
+  const beforeEdit = useRef<{ draft: string; reply: ChatMessage | null }>({ draft: '', reply: null });
+  const [, setClockTick] = useState(0);
   const bubbleRefs = useRef(new Map<string, HTMLDivElement>());
   const flashTimer = useRef<number | undefined>(undefined);
 
@@ -134,6 +145,10 @@ export function ChatPanel({ onClose }: { onClose: () => void }) {
       (id) => {
         setMessages((prev) => prev.filter((m) => m.id !== id));
         setSelectedId((cur) => (cur === id ? null : cur));
+      },
+      (updated) => {
+        // Someone (maybe me, on another device) edited a message: swap in the new text.
+        setMessages((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
       },
     );
     void load();
@@ -192,14 +207,18 @@ export function ChatPanel({ onClose }: { onClose: () => void }) {
     window.clearTimeout(flashTimer.current);
   }, []);
 
-  // Who can be @mentioned: people seen in this chat so far (excludes yourself).
+  // Who can be @mentioned: everyone seen in this chat so far (never yourself).
+  // People are remembered by account for as long as the chat is open, so a
+  // reload, a deleted message or the 7-day clean-up can't empty this list
+  // mid-conversation. Most recently active first.
+  const knownPeople = useRef(new Map<string, { username: string; avatarId: number }>());
   const participants = useMemo(() => {
-    const byName = new Map<string, { username: string; avatarId: number }>();
     for (const m of messages) {
       if (m.userId === user?.id) continue;
-      byName.set(m.username.toLowerCase(), { username: m.username, avatarId: m.avatarId });
+      knownPeople.current.delete(m.userId);
+      knownPeople.current.set(m.userId, { username: m.username, avatarId: m.avatarId });
     }
-    return [...byName.values()];
+    return [...knownPeople.current.values()].reverse();
   }, [messages, user?.id]);
 
   const mentionQuery = activeMentionQuery(draft, caret);
@@ -221,6 +240,11 @@ export function ChatPanel({ onClose }: { onClose: () => void }) {
   }
 
   function onInputKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Escape' && editing && suggestions.length === 0) {
+      e.stopPropagation(); // cancel the edit, don't close the whole chat
+      finishEdit();
+      return;
+    }
     if (suggestions.length === 0) return;
     if (e.key === 'ArrowDown') {
       e.preventDefault();
@@ -242,6 +266,30 @@ export function ChatPanel({ onClose }: { onClose: () => void }) {
     if (suggestions.length > 0) return; // Enter with the dropdown open picks a suggestion instead
     const check = validateChatMessage(draft);
     if (!check.ok) return setError(check.error ?? null);
+
+    // ── Saving an edit ──
+    if (editing) {
+      const text = draft.trim().replace(/\s+/g, ' ');
+      if (text === editing.body) {
+        finishEdit();
+        return;
+      }
+      setSending(true);
+      setError(null);
+      const res = await editChatMessage(editing.id, draft);
+      setSending(false);
+      if (!res.ok) {
+        setError(res.error ?? 'Couldn’t save your edit.');
+        if (res.expired) finishEdit();
+        return;
+      }
+      const target = editing.id;
+      setMessages((prev) => prev.map((m) => (m.id === target ? { ...m, body: text, editedAt: res.editedAt ?? Date.now() } : m)));
+      finishEdit();
+      return;
+    }
+
+    // ── Sending a new message ──
     if (Date.now() - lastSent.current < SEND_GAP_MS) return setError('Slow down a little.');
     setSending(true);
     setError(null);
@@ -255,18 +303,26 @@ export function ChatPanel({ onClose }: { onClose: () => void }) {
     if (!live) void load(); // realtime not connected: pull the new message in
   }
 
-  /** Scrolls to and briefly highlights a message that's still loaded. If it
-   * has scrolled out of the loaded history, says so instead of doing nothing. */
+  /** Scrolls the chat (only the chat list, never the page) so the original
+   * message sits in the middle, then holds a golden highlight on it for a few
+   * seconds before it fades. If the message isn't loaded any more, says so. */
   function jumpTo(id: string) {
+    const list = listRef.current;
     const el = bubbleRefs.current.get(id);
-    if (!el) {
-      showToast('That message is further up — scroll to find it.', 'info');
+    if (!list || !el) {
+      showToast('That message isn’t loaded any more. It may be older or deleted.', 'info');
       return;
     }
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const offset = el.getBoundingClientRect().top - list.getBoundingClientRect().top + list.scrollTop;
+    stick.current = false; // don't let a new incoming message snap the list back down
+    list.scrollTo({ top: Math.max(0, offset - (list.clientHeight - el.offsetHeight) / 2), behavior: 'smooth' });
+
     window.clearTimeout(flashTimer.current);
-    setFlashId(id);
-    flashTimer.current = window.setTimeout(() => setFlashId(null), 1500);
+    setFlashId(null); // restart the animation if the same message is tapped again
+    requestAnimationFrame(() => {
+      setFlashId(id);
+      flashTimer.current = window.setTimeout(() => setFlashId(null), FLASH_MS + 100);
+    });
   }
 
   // ── Long-press / right-click message actions ─────────────────────────
@@ -293,10 +349,11 @@ export function ChatPanel({ onClose }: { onClose: () => void }) {
     showToast(ok ? 'Message copied' : 'Couldn’t copy. Try again.', ok ? 'success' : 'error');
     clearSelection();
   }
-  function replySelected() {
-    if (!selectedMessage) return;
-    setReplyTo(selectedMessage);
-    const text = `@${selectedMessage.username} `;
+  /** Starts a reply to exactly this message (used by the action bar and by swipe-to-reply). */
+  function startReply(target: ChatMessage) {
+    if (editing) finishEdit(false);
+    setReplyTo(target);
+    const text = `@${target.username} `;
     setDraft(text);
     setCaret(text.length);
     clearSelection();
@@ -305,6 +362,53 @@ export function ChatPanel({ onClose }: { onClose: () => void }) {
       inputRef.current?.setSelectionRange(text.length, text.length);
     });
   }
+  function replySelected() {
+    if (selectedMessage) startReply(selectedMessage);
+  }
+
+  // ── Editing ──────────────────────────────────────────────────────────
+  const canEdit = (m: ChatMessage) => m.userId === user?.id && Date.now() - m.createdAt < EDIT_WINDOW_MS;
+
+  // Make the pencil disappear on its own the moment the 15 minutes are up.
+  useEffect(() => {
+    if (!selectedMessage || selectedMessage.userId !== user?.id) return;
+    const left = selectedMessage.createdAt + EDIT_WINDOW_MS - Date.now();
+    if (left <= 0) return;
+    const t = window.setTimeout(() => setClockTick((n) => n + 1), left + 100);
+    return () => window.clearTimeout(t);
+  }, [selectedMessage, user?.id]);
+
+  function editSelected() {
+    if (!selectedMessage) return;
+    const target = selectedMessage;
+    clearSelection();
+    if (!canEdit(target)) {
+      showToast('The 15-minute edit window has passed.', 'info');
+      return;
+    }
+    if (!editing) beforeEdit.current = { draft, reply: replyTo };
+    setReplyTo(null);
+    setEditing(target);
+    setDraft(target.body);
+    setCaret(target.body.length);
+    setError(null);
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+      inputRef.current?.setSelectionRange(target.body.length, target.body.length);
+    });
+  }
+
+  /** Leaves edit mode and (by default) puts back whatever was in the composer before. */
+  function finishEdit(restore = true) {
+    if (restore) {
+      setDraft(beforeEdit.current.draft);
+      setReplyTo(beforeEdit.current.reply);
+    }
+    beforeEdit.current = { draft: '', reply: null };
+    setEditing(null);
+    setError(null);
+  }
+
   function infoSelected() {
     if (!selectedMessage) return;
     setInfoMessage(selectedMessage);
@@ -354,6 +458,11 @@ export function ChatPanel({ onClose }: { onClose: () => void }) {
             <button type="button" className="icon-btn" onClick={replySelected} aria-label="Reply">
               <Reply size={19} aria-hidden="true" />
             </button>
+            {selectedMessage && canEdit(selectedMessage) && (
+              <button type="button" className="icon-btn" onClick={editSelected} aria-label="Edit message">
+                <Pencil size={19} aria-hidden="true" />
+              </button>
+            )}
             <button type="button" className="icon-btn" onClick={infoSelected} aria-label="Message info">
               <Info size={19} aria-hidden="true" />
             </button>
@@ -406,85 +515,101 @@ export function ChatPanel({ onClose }: { onClose: () => void }) {
           const isSelected = selectedId === m.id;
           const { counts, mine: myReaction } = summarize(reactions, m.id, user?.id);
           return (
-            <div
-              key={m.id}
-              ref={(el) => {
-                if (el) bubbleRefs.current.set(m.id, el);
-                else bubbleRefs.current.delete(m.id);
-              }}
-              className={`msg${mine ? ' is-mine' : ''}${mentioned ? ' mentions-me' : ''}${isSelected ? ' is-selected' : ''}${flashId === m.id ? ' is-flash' : ''}`}
-              onContextMenu={(e) => openActions(e, m)}
-              onTouchStart={() => startLongPress(m)}
-              onTouchEnd={cancelLongPress}
-              onTouchMove={cancelLongPress}
-            >
-              <div className="msg-col">
-                {isSelected && (
-                  <div className="reaction-picker" role="menu" onClick={(e) => e.stopPropagation()}>
-                    {REACTION_EMOJIS.map((emoji) => (
-                      <button
-                        key={emoji}
-                        type="button"
-                        className={myReaction === emoji ? 'is-active' : ''}
-                        onClick={() => void react(m, emoji)}
-                        aria-label={`React ${emoji}`}
-                      >
-                        {emoji}
-                      </button>
-                    ))}
-                  </div>
-                )}
+            <SwipeToReply key={m.id} disabled={selectedId !== null} onSwipeStart={cancelLongPress} onReply={() => startReply(m)}>
+              <div
+                ref={(el) => {
+                  if (el) bubbleRefs.current.set(m.id, el);
+                  else bubbleRefs.current.delete(m.id);
+                }}
+                className={`msg${mine ? ' is-mine' : ''}${mentioned ? ' mentions-me' : ''}${isSelected ? ' is-selected' : ''}${flashId === m.id ? ' is-flash' : ''}`}
+                onContextMenu={(e) => openActions(e, m)}
+                onTouchStart={() => startLongPress(m)}
+                onTouchEnd={cancelLongPress}
+                onTouchMove={cancelLongPress}
+              >
+                <div className="msg-col">
+                  {isSelected && (
+                    <div className="reaction-picker" role="menu" onClick={(e) => e.stopPropagation()}>
+                      {REACTION_EMOJIS.map((emoji) => (
+                        <button
+                          key={emoji}
+                          type="button"
+                          className={myReaction === emoji ? 'is-active' : ''}
+                          onClick={() => void react(m, emoji)}
+                          aria-label={`React ${emoji}`}
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  )}
 
-                <div className="msg-line">
-                  {!mine && <Avatar id={m.avatarId} size={30} />}
-                  <div className="msg-body">
-                    <span className="msg-meta">
-                      {mine ? 'You' : m.username} · {time(m.createdAt)}
-                    </span>
-                    {m.replyToId && (
-                      <button
-                        type="button"
-                        className="msg-quote"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          jumpTo(m.replyToId!);
-                        }}
-                      >
-                        <CornerUpLeft size={13} aria-hidden="true" />
-                        <span className="msg-quote-text">
-                          <span className="msg-quote-name">{m.replyUsername ?? 'Deleted message'}</span>
-                          <span>{m.replyPreview ?? ''}</span>
-                        </span>
-                      </button>
-                    )}
-                    <MessageBody body={m.body} />
+                  <div className="msg-line">
+                    {!mine && <Avatar id={m.avatarId} size={30} />}
+                    <div className="msg-body">
+                      <span className="msg-meta">
+                        {mine ? 'You' : m.username} · {time(m.createdAt)}
+                        {m.editedAt ? ' · Edited' : ''}
+                      </span>
+                      {m.replyToId && (
+                        <button
+                          type="button"
+                          className="msg-quote"
+                          aria-label={`Go to the original message from ${m.replyUsername ?? 'a deleted message'}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            jumpTo(m.replyToId!);
+                          }}
+                        >
+                          <CornerUpLeft size={13} aria-hidden="true" />
+                          <span className="msg-quote-text">
+                            <span className="msg-quote-name">{m.replyUsername ?? 'Deleted message'}</span>
+                            <span>{m.replyPreview ?? ''}</span>
+                          </span>
+                        </button>
+                      )}
+                      <MessageBody body={m.body} />
+                    </div>
                   </div>
+
+                  {counts.length > 0 && (
+                    <div className="msg-reactions">
+                      {counts.map(([emoji, n]) => (
+                        <button
+                          key={emoji}
+                          type="button"
+                          className={`reaction-pill${myReaction === emoji ? ' is-mine' : ''}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void react(m, emoji);
+                          }}
+                        >
+                          {emoji} {n > 1 ? n : ''}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
-
-                {counts.length > 0 && (
-                  <div className="msg-reactions">
-                    {counts.map(([emoji, n]) => (
-                      <button
-                        key={emoji}
-                        type="button"
-                        className={`reaction-pill${myReaction === emoji ? ' is-mine' : ''}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          void react(m, emoji);
-                        }}
-                      >
-                        {emoji} {n > 1 ? n : ''}
-                      </button>
-                    ))}
-                  </div>
-                )}
               </div>
-            </div>
+            </SwipeToReply>
           );
         })}
       </div>
 
-      {replyTo && (
+      {editing && (
+        <div className="reply-preview is-editing">
+          <span className="reply-preview-bar" aria-hidden="true" />
+          <div className="reply-preview-text">
+            <span className="reply-preview-name">Edit message</span>
+            <span className="reply-preview-body">{editing.body}</span>
+          </div>
+          <button type="button" className="icon-btn" onClick={() => finishEdit()} aria-label="Cancel edit">
+            <X size={16} aria-hidden="true" />
+          </button>
+        </div>
+      )}
+
+      {replyTo && !editing && (
         <div className="reply-preview">
           <span className="reply-preview-bar" aria-hidden="true" />
           <div className="reply-preview-text">
@@ -529,7 +654,7 @@ export function ChatPanel({ onClose }: { onClose: () => void }) {
             maxLength={CHAT_MESSAGE_MAX}
             autoComplete="off"
             enterKeyHint="send"
-            placeholder="Write a message, @ to mention someone"
+            placeholder={editing ? 'Edit your message' : 'Write a message, @ to mention someone'}
             onChange={(e) => {
               setDraft(e.target.value);
               setCaret(e.target.selectionStart ?? e.target.value.length);
@@ -541,8 +666,14 @@ export function ChatPanel({ onClose }: { onClose: () => void }) {
             onClick={(e) => setCaret(e.currentTarget.selectionStart ?? draft.length)}
           />
         </div>
-        <button type="submit" className="btn btn-primary icon-send" disabled={sending || !draft.trim()} aria-label="Send message">
-          {sending ? <Loader2 size={18} className="spin" aria-hidden="true" /> : <Send size={18} aria-hidden="true" />}
+        <button type="submit" className="btn btn-primary icon-send" disabled={sending || !draft.trim()} aria-label={editing ? 'Save edit' : 'Send message'}>
+          {sending ? (
+            <Loader2 size={18} className="spin" aria-hidden="true" />
+          ) : editing ? (
+            <Check size={18} aria-hidden="true" />
+          ) : (
+            <Send size={18} aria-hidden="true" />
+          )}
         </button>
       </form>
       {error && (

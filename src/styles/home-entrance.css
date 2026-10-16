@@ -1,0 +1,268 @@
+/* Home-page opening film. The picture itself is drawn on a canvas (lib/introScene.ts);
+   this file styles the layer around it, the logo that glows in, and the way the real
+   page rises into place once the ring of light has opened the picture.
+   Phases are class names:
+     <html>.entrance-play   page content waits (set before the first paint)
+     <html>.entrance-go     page content rises in (set when the reveal starts)
+     .film.is-ready / .is-logo / .is-reveal / .is-done   stages of the film itself
+   Only transform and opacity are animated (GPU friendly). */
+
+:root {
+  --fx-gold: 255, 201, 60;
+}
+:root[data-theme='light'] {
+  --fx-gold: 214, 150, 0;
+}
+
+/* The end values are written out on purpose: while the page is still marked
+   .entrance-play its own opacity is 0, so an implicit "to" would stay invisible. */
+@keyframes en-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes en-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 28px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* ── A quiet glow that stays behind the headline afterwards ── */
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -150px;
+  left: -150px;
+  width: 520px;
+  height: 520px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle, rgba(var(--fx-gold), 0.11), transparent 62%);
+}
+@media (min-width: 768px) {
+  .hero::before {
+    top: -150px;
+    left: -60px;
+    width: 600px;
+    height: 600px;
+  }
+}
+
+/* ── The page waits behind the film, then rises in as the picture opens ── */
+html.entrance-play .header,
+html.entrance-play .hero h1,
+html.entrance-play .hero-sub,
+html.entrance-play .hero-actions,
+html.entrance-play .hero-live,
+html.entrance-play .hero::before,
+html.entrance-play .hero::after,
+html.entrance-play .hero ~ .section,
+html.entrance-play .dock-wrap,
+html.entrance-play .chat-launcher {
+  opacity: 0;
+}
+html.entrance-go .header {
+  animation: en-fade 0.9s ease 0.15s both;
+}
+html.entrance-go .hero::before {
+  animation: en-fade 1.6s ease 0.1s both;
+}
+html.entrance-go .hero::after {
+  animation: en-fade 1.4s ease 0.2s both;
+}
+html.entrance-go .hero h1 {
+  animation: en-rise 1s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
+}
+html.entrance-go .hero-sub {
+  animation: en-rise 1s cubic-bezier(0.16, 1, 0.3, 1) 0.32s both;
+}
+html.entrance-go .hero-actions {
+  animation: en-rise 1s cubic-bezier(0.16, 1, 0.3, 1) 0.44s both;
+}
+html.entrance-go .hero-live {
+  animation: en-rise 1s cubic-bezier(0.16, 1, 0.3, 1) 0.56s both;
+}
+html.entrance-go .hero + .section {
+  animation: en-rise 1s cubic-bezier(0.16, 1, 0.3, 1) 0.68s both;
+}
+html.entrance-go .hero + .section + .section {
+  animation: en-rise 1s cubic-bezier(0.16, 1, 0.3, 1) 0.82s both;
+}
+html.entrance-go .dock-wrap,
+html.entrance-go .chat-launcher {
+  animation: en-fade 0.9s ease 0.9s both;
+}
+
+/* ── The film layer ── */
+.film {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  overflow: hidden;
+  background: #02040c; /* shown for the instant while the picture is being prepared */
+  cursor: pointer;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+.film.is-ready {
+  background: transparent; /* the canvas paints its own background, then cuts a hole in it */
+}
+.film.is-reveal,
+.film.is-done {
+  pointer-events: none; /* the page underneath is already usable */
+}
+.film.is-done {
+  display: none;
+}
+.film-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Cinematic black bars that slide away when the picture opens */
+.film-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 6.5vh;
+  background: #010207;
+  will-change: transform;
+  transition: transform 0.9s cubic-bezier(0.65, 0, 0.35, 1);
+}
+.film-bar-top {
+  top: 0;
+}
+.film-bar-bottom {
+  bottom: 0;
+}
+@media (max-aspect-ratio: 1/1) {
+  .film-bar {
+    height: 3.5vh;
+  }
+}
+.film.is-reveal .film-bar-top {
+  transform: translate3d(0, -101%, 0);
+}
+.film.is-reveal .film-bar-bottom {
+  transform: translate3d(0, 101%, 0);
+}
+
+/* ── FRIEND11 logo: glows in over the net, then pushes through the camera ── */
+.film-title {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.film-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.29em;
+  font-family: var(--font-display);
+  font-size: clamp(2.6rem, 11.5vw, 5.4rem);
+  font-weight: 700;
+  line-height: 1;
+  color: #f5f7ff;
+  text-shadow: 0 0 34px rgba(255, 201, 60, 0.35), 0 4px 30px rgba(0, 0, 0, 0.55);
+  opacity: 0;
+  will-change: transform, opacity, filter;
+}
+.film-word {
+  letter-spacing: -0.01em;
+}
+.film-tag {
+  padding: 0.1786em 0.4167em;
+  border-radius: 0.357em;
+  background: #ffc93c;
+  color: #1a1400;
+  font-size: 0.8077em;
+  text-shadow: none;
+  box-shadow: 0 0 40px rgba(255, 201, 60, 0.45);
+}
+.film-rule {
+  display: block;
+  width: min(52vw, 260px);
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #ffc93c, transparent);
+  opacity: 0;
+  transform: scaleX(0);
+}
+    .film-sub {
+     font-size: clamp(12px, 3.3vw, 15px);
+     font-weight: 600;
+     letter-spacing: 0.36em;
+     text-transform: uppercase;
+     color: rgba(246, 249, 255, 0.96);
+     text-shadow: 0 2px 14px rgba(0, 0, 0, 0.7);
+     opacity: 0;
+   }
+.film.is-logo .film-logo {
+  animation: film-logo-in 1.15s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.film.is-logo .film-rule {
+  animation: film-rule-in 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.35s both;
+}
+.film.is-logo .film-sub {
+  animation: film-sub-in 0.9s ease 0.55s both;
+}
+@keyframes film-logo-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 16px, 0) scale(1.07);
+    filter: blur(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: blur(0);
+  }
+}
+@keyframes film-rule-in {
+  from {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+  to {
+    opacity: 0.9;
+    transform: scaleX(1);
+  }
+}
+@keyframes film-sub-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+/* When the picture opens, the title pushes towards the camera and dissolves */
+.film.is-reveal .film-title {
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(1.45);
+  transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .film {
+    display: none;
+  }
+}

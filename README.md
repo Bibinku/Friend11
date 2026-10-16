@@ -90,7 +90,7 @@ src/
   lib/        supabase client, storage (the only localStorage touchpoint), validation, room timing, auth errors
   services/   profile / room / chat calls to Supabase
   context/    Auth, Rooms (+ server-corrected clock), Theme, Toast, UI
-  components/ Modal, Header, Drawer, RoomCard, ChatPanel, LoginModal, OnboardingModal …
+  components/ Modal, Header, BottomNav, RoomCard, ChatPanel, LoginModal, OnboardingModal …
   pages/      Home, Join, Create, Profile, Info, NotFound
   data/       avatars, countries, modes, static page copy
   styles/     tokens.css (themes), ui.css (primitives), app.css (layout)

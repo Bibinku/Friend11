@@ -8,6 +8,9 @@ export function friendlyAuthError(code: string | null | undefined, description?:
   if (text.includes('redirect') && text.includes('mismatch')) {
     return 'Google sign-in isn’t set up for this address yet. The site owner needs to add it in Google Cloud.';
   }
+    if (text.includes('audience') || text.includes('nonce') || text.includes('id_token') || text.includes('id token')) {
+    return 'Google sign-in isn’t set up correctly for this site yet. The site owner needs to check the Google Client ID in Supabase.';
+  }
   if (text.includes('rate limit') || text.includes('security purposes') || text.includes('429')) {
     return 'Too many attempts. Wait a minute, then try again.';
   }

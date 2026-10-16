@@ -17,7 +17,6 @@ interface RoomRow {
   copies_used: number | null;
   i_copied: boolean | null;
   full_for_me: boolean | null;
-  cooldown_until: string | null;
 }
 
 export interface RoomSnapshot {
@@ -58,7 +57,6 @@ export async function listRooms(guestKey: string): Promise<{ data: RoomSnapshot 
       copiesUsed: r.copies_used ?? 0,
       iCopied: Boolean(r.i_copied),
       fullForMe: Boolean(r.full_for_me),
-      cooldownUntil: r.cooldown_until ? Date.parse(r.cooldown_until) || null : null,
     });
   }
   return { data: { rooms, clockOffsetMs: offset }, error: null };
@@ -98,7 +96,7 @@ export interface CopyResult extends Result {
   /** The code to put on the clipboard — present whenever ok is true. */
   code?: string;
   /** Why it failed, so the card can react. */
-  reason?: 'expired' | 'own' | 'already' | 'full' | 'cooldown' | 'other';
+  reason?: 'expired' | 'own' | 'already' | 'full' | 'other';
 }
 
 export async function copyRoomCode(roomId: string, guestKey: string): Promise<CopyResult> {
@@ -109,9 +107,6 @@ export async function copyRoomCode(roomId: string, guestKey: string): Promise<Co
     if (/your own room/i.test(msg)) return { ok: false, reason: 'own', error: 'You can’t copy your own room code.' };
     if (/already copied/i.test(msg)) return { ok: false, reason: 'already', error: 'You already copied this room.' };
     if (/is full/i.test(msg)) return { ok: false, reason: 'full', error: 'This room just filled up.' };
-    if (/wait a few minutes/i.test(msg)) {
-      return { ok: false, reason: 'cooldown', error: 'You copied a code recently. Please wait before copying another.' };
-    }
     return { ok: false, reason: 'other', error: 'Couldn’t copy this code. Try again.' };
   }
   const row = (Array.isArray(data) ? data[0] : data) as { code: string } | undefined;

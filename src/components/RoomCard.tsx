@@ -4,7 +4,7 @@ import type { MatchRoom } from '../types';
 import { iconForMode } from '../data/modes';
 import { flagFor } from '../data/countries';
 import { copyText } from '../lib/clipboard';
-import { isExpired, formatCountdown } from '../lib/roomTime';
+import { isExpired } from '../lib/roomTime';
 import { useClock, useRooms } from '../context/RoomsContext';
 import { useToast } from '../context/ToastContext';
 import { copyRoomCode } from '../services/roomService';
@@ -22,13 +22,10 @@ export function RoomCard({ room }: { room: MatchRoom }) {
   // and everyone else always agree.
   const copiedByMe = room.iCopied;
   const ownerSeesCopied = room.isMine && room.copiesUsed > 0;
-  // The cooldown belongs to ME, not to the room.
-  const cooldownLeft = room.cooldownUntil ? Math.max(0, room.cooldownUntil - now) : 0;
-  const onCooldown = !room.isMine && !copiedByMe && !room.fullForMe && cooldownLeft > 0;
 
   async function copy() {
     if (isExpired(room, now) || busy) return;
-    if (room.isMine || copiedByMe || room.fullForMe || onCooldown) return;
+    if (room.isMine || copiedByMe || room.fullForMe) return;
 
     setBusy(true);
     const res = await copyRoomCode(room.id, guest.key);
@@ -72,10 +69,6 @@ export function RoomCard({ room }: { room: MatchRoom }) {
   } else if (room.fullForMe) {
     label = 'Already Copied';
     icon = <Lock size={16} aria-hidden="true" />;
-    tone = 'muted';
-    disabled = true;
-  } else if (onCooldown) {
-    label = `Wait ${formatCountdown(cooldownLeft)}`;
     tone = 'muted';
     disabled = true;
   }

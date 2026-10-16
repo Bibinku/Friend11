@@ -19,6 +19,7 @@ export function MessageInfoModal({ message, onClose }: { message: ChatMessage | 
             </div>
           </div>
           <p className="msg-info-body">{message.body}</p>
+                    {message.editedAt && <p className="msg-info-time">Edited {full(message.editedAt)}</p>}
         </div>
       )}
     </Modal>

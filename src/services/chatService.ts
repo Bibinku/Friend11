@@ -9,12 +9,13 @@ interface ChatRow {
   avatar_id: number;
   body: string;
   created_at: string;
+  edited_at: string | null;
   reply_to_id: string | null;
   reply_username: string | null;
   reply_preview: string | null;
 }
 
-const COLUMNS = 'id, user_id, username, avatar_id, body, created_at, reply_to_id, reply_username, reply_preview';
+const COLUMNS = 'id, user_id, username, avatar_id, body, created_at, edited_at, reply_to_id, reply_username, reply_preview';
 const HISTORY = 100;
 
 const toMessage = (r: ChatRow): ChatMessage => ({
@@ -24,6 +25,7 @@ const toMessage = (r: ChatRow): ChatMessage => ({
   avatarId: r.avatar_id,
   body: r.body,
   createdAt: Date.parse(r.created_at),
+  editedAt: r.edited_at ? Date.parse(r.edited_at) : null,
   replyToId: r.reply_to_id,
   replyUsername: r.reply_username,
   replyPreview: r.reply_preview,
@@ -65,16 +67,45 @@ export async function sendChatMessage(body: string, replyToId?: string | null): 
   return { ok: true };
 }
 
-/** Live delivery of new messages, and removal of deleted ones. */
+/** The result of an edit. `expired` is true when the 15-minute window has closed. */
+export interface EditResult {
+  ok: boolean;
+  error?: string;
+  editedAt?: number;
+  expired?: boolean;
+}
+
+/** Edits one of my own messages. The database function enforces BOTH ownership
+ * and the 15-minute window using its own clock, so this can't be bypassed
+ * from the browser. */
+export async function editChatMessage(id: string, body: string): Promise<EditResult> {
+  const check = validateChatMessage(body);
+  if (!check.ok) return check;
+  const { data, error } = await supabase.rpc('edit_chat_message', { p_id: id, p_body: body.trim().replace(/\s+/g, ' ') });
+  if (error) {
+    if (error.code === '55000') return { ok: false, expired: true, error: 'The 15-minute edit window has passed.' };
+    if (error.code === '42501') return { ok: false, error: 'You can only edit your own messages.' };
+    if (error.code === 'P0002') return { ok: false, error: 'That message no longer exists.' };
+    return { ok: false, error: 'Couldn’t save your edit. Try again.' };
+  }
+  const when = typeof data === 'string' ? Date.parse(data) : NaN;
+  return { ok: true, editedAt: Number.isFinite(when) ? when : Date.now() };
+}
+
+/** Live delivery of new messages, edits, and removal of deleted ones. */
 export function subscribeToMessages(
   onMessage: (m: ChatMessage) => void,
   onStatus: (live: boolean) => void,
   onDelete?: (id: string) => void,
+  onUpdate?: (m: ChatMessage) => void,
 ): () => void {
   const channel = supabase
     .channel('friend11-live-chat')
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, (payload) => {
       onMessage(toMessage(payload.new as ChatRow));
+    })
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_messages' }, (payload) => {
+      onUpdate?.(toMessage(payload.new as ChatRow));
     })
     .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'chat_messages' }, (payload) => {
       const old = payload.old as Partial<ChatRow>;

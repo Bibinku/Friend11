@@ -6,7 +6,6 @@ import { getAuthRedirectUrl, initialAuthCallback, stripAuthErrorFromUrl, supabas
 import { friendlyAuthError } from '../lib/authErrors';
 import { isCountry, validateEmail, validateUsername } from '../lib/validation';
 import { logLogin } from '../lib/loginLog';
-import { markSignInStarted, takeSignInStarted } from '../lib/storage';
 import { AVATARS } from '../data/avatars';
 import * as profiles from '../services/profileService';
 import { useToast } from './ToastContext';
@@ -36,7 +35,8 @@ interface AuthValue {
   /** A failed Google / email-link return, worded for the person. */
   callbackError: string | null;
   clearCallbackError: () => void;
-  signInWithGoogle: () => Promise<Result>;
+    /** Finishes Google sign-in with the ID token Google's own button handed us. */
+  signInWithGoogleIdToken: (credential: string, nonce: string) => Promise<Result>;
   sendMagicLink: (email: string) => Promise<Result>;
   signOut: () => Promise<void>;
   completeOnboarding: (username: string, avatarId: number, country: CountryName) => Promise<Result>;
@@ -49,8 +49,6 @@ interface AuthValue {
 
 const AuthContext = createContext<AuthValue | undefined>(undefined);
 
-/** Evaluated once per page load: did this load follow a Google sign-in we started? */
-const returnedFromSignIn = takeSignInStarted();
 
 const validAvatar = (id: number) => AVATARS.some((a) => a.id === id);
 
@@ -119,16 +117,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!restored || initialCallbackChecked.current) return;
     initialCallbackChecked.current = true;
     if (userId) return; // signed in fine — nothing to report
-    const c = initialAuthCallback;
-    if (c.isCallback && !c.errorCode && !c.errorDescription) {
+        const c = initialAuthCallback;
+       if (c.isCallback && !c.errorCode && !c.errorDescription) {
       setCallbackError((prev) => prev ?? 'We couldn’t finish signing you in. Please try again.');
-    } else if (returnedFromSignIn && !c.isCallback) {
-      // Google sent the browser back with no tokens at all — the classic sign of
-      // a redirect URL that isn't on Supabase's allow-list.
-      setCallbackError((prev) => prev ?? 'Sign-in didn’t finish. Please try again. If it keeps happening, the site owner needs to check the sign-in redirect settings.');
     }
   }, [restored, userId]);
-
   /** 2) Profile loading — keyed on the immutable user id, outside the auth callback. */
   useEffect(() => {
     if (!userId) {
@@ -159,21 +152,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [userId, retryTick]);
 
   // Optional Google-Sheets login log: once per sign-in return, after the profile is complete.
-  const loggedFor = useRef<string | null>(null);
+    const loggedFor = useRef<string | null>(null);
+  const googleSignInDone = useRef(false);
   useEffect(() => {
-    if (!initialAuthCallback.isCallback || !profile?.onboarded || !userId || loggedFor.current === userId) return;
+    if ((!initialAuthCallback.isCallback && !googleSignInDone.current) || !profile?.onboarded || !userId || loggedFor.current === userId) return;
     loggedFor.current = userId;
     logLogin({ username: profile.username, email });
   }, [profile, userId, email]);
 
-  const signInWithGoogle = useCallback(async (): Promise<Result> => {
-    markSignInStarted();
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: getAuthRedirectUrl(), queryParams: { prompt: 'select_account' } },
-    });
-    if (error) return { ok: false, error: friendlyAuthError(error.code, error.message) };
-    return { ok: true }; // the browser is now navigating to Google
+    /**
+   * Google sign-in, ID-token method: Google's own button (see GoogleSignInButton)
+   * hands us a signed ID token, and Supabase verifies it against the Client ID
+   * saved in its Google provider settings. There is no redirect to Supabase's
+   * address, so Google only ever shows the app name set on the consent screen.
+   */
+  const signInWithGoogleIdToken = useCallback(async (credential: string, nonce: string): Promise<Result> => {
+    googleSignInDone.current = true; // lets the optional login log run once the profile is ready
+    const { error } = await supabase.auth.signInWithIdToken({ provider: 'google', token: credential, nonce });
+    if (error) {
+      googleSignInDone.current = false;
+      return { ok: false, error: friendlyAuthError(error.code, error.message) };
+    }
+    return { ok: true };
   }, []);
 
   const sendMagicLink = useCallback(async (address: string): Promise<Result> => {
@@ -285,7 +285,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       callbackPending,
       callbackError,
       clearCallbackError,
-      signInWithGoogle,
+      signInWithGoogleIdToken,
       sendMagicLink,
       signOut,
       completeOnboarding,
@@ -297,7 +297,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }),
     [
       restored, user, profile, profileStatus, profileError, isSignedIn, needsOnboarding, isMember, callbackPending,
-      callbackError, clearCallbackError, signInWithGoogle, sendMagicLink, signOut, completeOnboarding,
+      callbackError, clearCallbackError, signInWithGoogleIdToken, sendMagicLink, signOut, completeOnboarding,
       updateUsername, updateAvatar, updateCountry, deleteAccount, retryProfile,
     ],
   );

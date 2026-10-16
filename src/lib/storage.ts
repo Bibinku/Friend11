@@ -9,8 +9,6 @@ const KEYS = {
   theme: 'friend11_theme_v1',
   guest: 'friend11_guest_v1',
   afterLogin: 'friend11_after_login_v1',
-  signInStarted: 'friend11_signin_started_v1',
-  lastCopyAt: 'friend11_last_copy_at_v1',
 } as const;
 
 function read(key: string): unknown {
@@ -90,29 +88,4 @@ export function takeAfterLogin(): AfterLoginIntent | null {
   remove(KEYS.afterLogin);
   if (isRecord(v) && v.intent === 'chat' && typeof v.at === 'number' && Date.now() - v.at < INTENT_TTL_MS) return 'chat';
   return null;
-}
-
-// ── "Google sign-in was started in this browser" (to explain silent failures) ─
-const STARTED_TTL_MS = 10 * 60 * 1000;
-
-export function markSignInStarted(): void {
-  write(KEYS.signInStarted, Date.now());
-}
-/** True once, on the first page load after a sign-in was started. */
-export function takeSignInStarted(): boolean {
-  const v = read(KEYS.signInStarted);
-  remove(KEYS.signInStarted);
-  return typeof v === 'number' && Date.now() - v < STARTED_TTL_MS;
-}
-// ── Copy-code cooldown (3 minutes between copies, across ALL rooms) ────
-// The server enforces this for real; this is just so the button can show a
-// live countdown immediately instead of waiting for a rejected request.
-export const COPY_COOLDOWN_MS = 3 * 60 * 1000;
-
-export function markCopyNow(): void {
-  write(KEYS.lastCopyAt, Date.now());
-}
-export function lastCopyAt(): number | null {
-  const v = read(KEYS.lastCopyAt);
-  return typeof v === 'number' ? v : null;
 }

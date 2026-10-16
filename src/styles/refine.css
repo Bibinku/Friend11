@@ -1,0 +1,195 @@
+/* Visual refinement layer. Loaded last: it tunes typography, buttons, surfaces,
+   fields, dialogs and chat bubbles into one consistent, calmer system without
+   changing any layout or class names. */
+
+/* ── Typography ───────────────────────────────────── */
+body {
+  font-size: 15.5px;
+  line-height: 1.6;
+  font-feature-settings: 'cv11', 'ss03';
+  text-rendering: optimizeLegibility;
+}
+h1,
+h2,
+h3 {
+  font-weight: 600;
+  letter-spacing: -0.022em;
+  text-wrap: balance;
+}
+p {
+  text-wrap: pretty;
+}
+.countdown,
+.char-count,
+.msg-meta {
+  font-variant-numeric: tabular-nums;
+}
+::selection {
+  background: rgba(255, 201, 60, 0.32);
+  color: inherit;
+}
+
+/* ── Buttons ──────────────────────────────────────── */
+.btn {
+  border-radius: 14px;
+  font-weight: 600;
+  letter-spacing: 0.005em;
+  transition: background 0.22s ease, border-color 0.22s ease, box-shadow 0.25s ease, transform 0.25s var(--ease-out),
+    color 0.2s ease;
+}
+.btn-primary {
+  background: linear-gradient(180deg, #ffd45e 0%, #ffbf1f 100%);
+  box-shadow: 0 8px 20px rgba(255, 191, 31, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, #ffdc78 0%, #ffc72f 100%);
+  box-shadow: 0 10px 26px rgba(255, 191, 31, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+.btn-secondary {
+  background: var(--surface);
+  border-color: var(--line-strong);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+@media (hover: hover) {
+  .btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
+}
+.btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+.icon-btn {
+  border-radius: 13px;
+  transition: background 0.2s ease, transform 0.25s var(--ease-out);
+}
+.icon-btn:active {
+  transform: scale(0.93);
+}
+
+/* ── Surfaces: cards, chips, dialogs, toasts ──────── */
+.card {
+  border-color: var(--line);
+  border-radius: 20px;
+  box-shadow: 0 10px 28px rgba(3, 6, 22, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+:root[data-theme='light'] .card {
+  box-shadow: 0 8px 24px rgba(27, 42, 85, 0.08), inset 0 1px 0 #fff;
+}
+.chip {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+.modal {
+  box-shadow: 0 -10px 40px rgba(3, 6, 22, 0.35);
+}
+@media (min-width: 640px) {
+  .modal {
+    border-radius: 24px;
+    box-shadow: var(--shadow);
+  }
+}
+.modal-backdrop {
+  background: rgba(6, 9, 26, 0.58);
+  -webkit-backdrop-filter: blur(8px) saturate(1.2);
+  backdrop-filter: blur(8px) saturate(1.2);
+}
+.toast {
+  border-color: var(--glass-border);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(18px) saturate(1.5);
+  backdrop-filter: blur(18px) saturate(1.5);
+  box-shadow: var(--glass-shadow);
+}
+
+/* ── Fields ───────────────────────────────────────── */
+.field {
+  border-color: var(--line);
+  border-radius: 14px;
+  transition: border-color 0.2s ease, box-shadow 0.25s ease, background 0.2s ease;
+}
+.field:hover {
+  border-color: var(--line-strong);
+}
+.field:focus {
+  border-color: var(--focus);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--focus) 24%, transparent);
+}
+.label {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+/* ── Header ───────────────────────────────────────── */
+.header {
+  -webkit-backdrop-filter: blur(18px) saturate(1.6);
+  backdrop-filter: blur(18px) saturate(1.6);
+}
+.logo-word {
+  font-weight: 700;
+}
+
+/* ── Live Chat surfaces ───────────────────────────── */
+.chat-panel {
+  box-shadow: 0 -12px 44px rgba(3, 6, 22, 0.42);
+}
+@media (min-width: 640px) {
+  .chat-panel {
+    box-shadow: var(--shadow);
+  }
+}
+.chat-head h2 {
+  font-size: 1.08rem;
+  font-weight: 600;
+}
+.chat-list {
+  gap: 10px;
+}
+.msg-meta {
+  font-size: 11.5px;
+  letter-spacing: 0.01em;
+}
+.msg-body p {
+  padding: 8px 13px;
+  font-size: 14.5px;
+  line-height: 1.45;
+}
+.msg.is-mine .msg-body p {
+  box-shadow: 0 4px 12px rgba(47, 91, 209, 0.25);
+}
+.reply-preview {
+  background: var(--surface);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+.chat-form .field {
+  border-radius: 999px;
+  padding-left: 18px;
+}
+.icon-send {
+  border-radius: 50%;
+  width: 48px;
+}
+
+/* ── Thin, quiet scrollbars ───────────────────────── */
+.chat-list,
+.modal {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+}
+:root[data-theme='light'] .chat-list,
+:root[data-theme='light'] .modal {
+  scrollbar-color: rgba(27, 42, 85, 0.25) transparent;
+}
+
+/* ── Respect reduced motion ───────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -15,6 +15,9 @@ import App from './App';
 import './styles/tokens.css';
 import './styles/ui.css';
 import './styles/app.css';
+import './styles/chat-extras.css';
+import './styles/refine.css';
+import './styles/home-entrance.css';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Root element (#root) not found — check index.html.');

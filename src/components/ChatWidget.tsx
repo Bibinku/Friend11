@@ -6,7 +6,9 @@ import { fetchUnreadMentionCount, markMentionsRead, subscribeToMentions } from '
 import { ChatPanel } from './ChatPanel';
 
 /**
- * Persistent "Live Chat" launcher (bubble icon + label) on every page.
+ * Persistent "Live Chat" launcher (bubble icon + label) on every page. While the
+ * page scrolls it shows icon + label; when the bottom navigation is out it
+ * collapses to the icon alone (CSS, keyed off <html data-dock>).
  * Signed-out visitors see it too; tapping it explains that chat needs an
  * account and opens sign-in. Members get the chat panel. The badge shows
  * how many @mentions of this person haven't been opened yet.
@@ -55,11 +57,21 @@ export function ChatWidget() {
   return (
     <>
       {!open && (
-        <button type="button" className="chat-launcher" onClick={requestChat} aria-haspopup="dialog">
+        <button
+          type="button"
+          className="chat-launcher"
+          onClick={requestChat}
+          aria-haspopup="dialog"
+          aria-label={unread > 0 ? `Live Chat, ${unread} unread mention${unread === 1 ? '' : 's'}` : 'Live Chat'}
+        >
           <MessageCircle size={22} aria-hidden="true" />
-          <span>Live Chat</span>
+          <span className="chat-launcher-label" aria-hidden="true">
+            <span>
+              <span>Live Chat</span>
+            </span>
+          </span>
           {unread > 0 && (
-            <span className="chat-badge" aria-label={`${unread} unread mention${unread === 1 ? '' : 's'}`}>
+            <span className="chat-badge" aria-hidden="true">
               {unread > 9 ? '9+' : unread}
             </span>
           )}

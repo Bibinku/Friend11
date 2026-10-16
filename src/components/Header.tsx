@@ -1,5 +1,5 @@
 import { Link, NavLink } from 'react-router-dom';
-import { LogIn, Menu, Moon, Sun } from 'lucide-react';
+import { LogIn, Moon, Sun } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useUI } from '../context/UIContext';
@@ -11,24 +11,23 @@ const NAV = [
   { to: '/create', label: 'Create', end: false },
   { to: '/join', label: 'Join', end: false },
 ];
-export function Header({ onMenu }: { onMenu: () => void }) {
+
+/**
+ * Desktop (900px and up): logo left, HOME / CREATE / JOIN centred, actions right.
+ * Phones and tablets hide the centre links and use the floating bottom dock instead.
+ */
+export function Header() {
   const { theme, setTheme } = useTheme();
   const { restored, isSignedIn, profile } = useAuth();
-  const { openLogin } = useUI();
+    const { openLogin, closeChat } = useUI();
   const next = theme === 'dark' ? 'light' : 'dark';
 
   return (
     <header className="header">
       <div className="container header-inner">
-        <div className="header-left">
-          <button type="button" className="icon-btn menu-btn" onClick={onMenu} aria-label="Open menu">
-            <Menu size={22} aria-hidden="true" />
-          </button>
-
-          <Link to="/" className="brand" aria-label="FRIEND11 home">
-            <Logo />
-          </Link>
-        </div>
+        <Link to="/" className="brand" aria-label="FRIEND11 home">
+          <Logo />
+        </Link>
 
         <nav className="nav-desktop" aria-label="Primary">
           {NAV.map((n) => (
@@ -51,7 +50,7 @@ export function Header({ onMenu }: { onMenu: () => void }) {
           {!restored ? (
             <span className="skeleton-circle" aria-hidden="true" />
           ) : isSignedIn ? (
-            <Link to="/profile" className="profile-chip" aria-label="Your profile">
+              <Link to="/profile" className="profile-chip" aria-label="Your profile" onClick={closeChat}>
               <Avatar id={profile?.avatarId} size={34} />
               {profile?.onboarded && <span className="profile-chip-name">{profile.username}</span>}
             </Link>

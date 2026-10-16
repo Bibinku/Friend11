@@ -1,0 +1,165 @@
+/* Live Chat additions: swipe-to-reply, reply quotes, golden jump highlight,
+   edit bar and mention styling. Loaded after app.css, so these win. */
+
+/* ── Swipe to reply ───────────────────────────────── */
+.swipe-row {
+  position: relative;
+  /* The browser keeps vertical scrolling; we only handle sideways drags. */
+  touch-action: pan-y pinch-zoom;
+}
+.swipe-content {
+  display: flex;
+  flex-direction: column;
+}
+.swipe-icon {
+  position: absolute;
+  top: 50%;
+  left: 10px;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--text-2);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-50%) scale(calc(0.55 + var(--p, 0) * 0.45));
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.swipe-icon.is-armed {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+/* ── Mentions: no underline, clearly highlighted ─── */
+.mention,
+.msg .msg-body p .mention {
+  color: var(--accent);
+  font-weight: 700;
+  text-decoration: none;
+}
+.msg.is-mine .msg-body p .mention {
+  color: #ffe08a;
+  text-decoration: none;
+}
+:root[data-theme='light'] .msg:not(.is-mine) .msg-body p .mention {
+  color: #8a5a00;
+}
+
+/* ── Reply: the quoted message is a smaller, duller card attached above the reply ── */
+.msg-body {
+  display: flex;
+  flex-direction: column;
+}
+.msg-quote {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  width: 100%;
+  max-width: 280px;
+  margin: 0 0 2px;
+  padding: 7px 11px 7px 9px;
+  border: 0;
+  border-left: 3px solid var(--accent);
+  border-radius: 12px 12px 4px 4px;
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+  color: var(--text-3);
+  text-align: left;
+  cursor: pointer;
+  opacity: 0.9;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.2s ease, background 0.2s ease, transform 0.2s var(--ease-out);
+}
+.msg-quote:hover {
+  opacity: 1;
+  background: color-mix(in srgb, var(--text) 10%, transparent);
+}
+.msg-quote:active {
+  transform: scale(0.985);
+}
+.msg-quote svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  opacity: 0.6;
+}
+.msg-quote-text {
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.msg-quote-text > span:last-child {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 1;
+  color: var(--text-3);
+}
+.msg-quote-name {
+  display: block;
+  margin-bottom: 1px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--accent);
+}
+:root[data-theme='light'] .msg:not(.is-mine) .msg-quote-name {
+  color: #8a5a00;
+}
+.msg.is-mine .msg-quote {
+  background: color-mix(in srgb, var(--blue) 52%, #070b26);
+  color: rgba(255, 255, 255, 0.72);
+}
+.msg.is-mine .msg-quote:hover {
+  background: color-mix(in srgb, var(--blue) 60%, #070b26);
+}
+.msg.is-mine .msg-quote-text > span:last-child {
+  color: rgba(255, 255, 255, 0.72);
+}
+.msg.is-mine .msg-quote-name {
+  color: #ffe08a;
+}
+/* The reply itself sits flush under its quote card, so the pair reads as two parts. */
+.msg .msg-body .msg-quote + p {
+  border-top-left-radius: 4px;
+  border-top-right-radius: 4px;
+}
+
+/* ── Golden highlight after jumping to the original message ──
+   Holds at full glow for ~3.4s, then fades out smoothly over the rest. */
+.msg.is-flash .msg-body p {
+  animation: quote-flash 4.8s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+.msg.is-mine.is-flash .msg-body p {
+  animation-name: quote-flash-mine;
+}
+@keyframes quote-flash {
+  8%,
+  72% {
+    background-color: color-mix(in srgb, var(--accent) 34%, var(--surface-2));
+    box-shadow: 0 0 0 2px var(--accent), 0 0 26px 3px rgba(255, 201, 60, 0.5);
+  }
+}
+@keyframes quote-flash-mine {
+  8%,
+  72% {
+    background-color: color-mix(in srgb, var(--accent) 38%, var(--blue));
+    box-shadow: 0 0 0 2px var(--accent), 0 0 26px 3px rgba(255, 201, 60, 0.5);
+  }
+}
+
+/* ── Composer bars: "Replying to…" and "Edit message" ── */
+.reply-preview.is-editing .reply-preview-bar {
+  background: var(--link);
+}
+.reply-preview.is-editing .reply-preview-name {
+  color: var(--link);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .msg.is-flash .msg-body p {
+    animation-duration: 0.01s;
+    animation-delay: 4.4s;
+  }
+}
